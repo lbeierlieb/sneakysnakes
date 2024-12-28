@@ -1,5 +1,5 @@
 {
-  description = "Dev shell for Bevy projects";
+  description = "Dev shell for Bevy projects with Rust tools";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
@@ -15,6 +15,7 @@
           pkgs.pkg-config
         ];
 
+        # Define dependencies in a single list
         buildInputs = with pkgs; [
           udev
           alsa-lib
@@ -25,6 +26,8 @@
           xorg.libXrandr
           libxkbcommon
           wayland
+          rustc
+          cargo
         ];
 
         # Set library paths
@@ -39,6 +42,11 @@
           libxkbcommon
           wayland
         ]);
+
+        # Optional shell hook for Rust tools
+        shellHook = ''
+          echo "Rust tools (cargo, rustc) and Bevy dependencies are ready to use!"
+        '';
       };
     };
 }
