@@ -1,6 +1,6 @@
-use bevy::{color::palettes::basic::*, prelude::*};
-use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::render::render_asset::RenderAssetUsages;
+use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
+use bevy::{color::palettes::basic::*, prelude::*};
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
 enum AppState {
@@ -27,7 +27,7 @@ fn main() {
             primary_window: Some(Window {
                 resolution: (512.0, 512.0).into(), // Fixed width and height
                 title: "Fixed 2D Screen".to_string(),
-                resizable: false,                   // Disable resizing
+                resizable: false, // Disable resizing
                 ..default()
             }),
             ..default()
@@ -38,25 +38,33 @@ fn main() {
         .add_systems(OnExit(AppState::MainMenu), cleanup_main_menu)
         .add_systems(OnEnter(AppState::InGame), setup_in_game)
         .add_systems(OnExit(AppState::InGame), cleanup_in_game)
-        .add_systems(Update, update_main_menu.run_if(in_state(AppState::MainMenu)))
+        .add_systems(
+            Update,
+            update_main_menu.run_if(in_state(AppState::MainMenu)),
+        )
         .add_systems(Update, game_logic.run_if(in_state(AppState::InGame)))
         .run();
 }
 
 fn setup_main_menu(mut commands: Commands) {
     commands.spawn(Camera2d);
-    commands.spawn((
-        Text2d::new("Press space to start"),
-    ));
+    commands.spawn((Text2d::new("Press space to start"),));
 }
 
-fn cleanup_main_menu(mut commands: Commands, query: Query<Entity, Or<(With<Camera>, With<Text2d>)>>) {
+fn cleanup_main_menu(
+    mut commands: Commands,
+    query: Query<Entity, Or<(With<Camera>, With<Text2d>)>>,
+) {
     for entity in &query {
         commands.entity(entity).despawn();
     }
 }
 
-fn update_main_menu(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>, mut settings: ResMut<GameSettings>) {
+fn update_main_menu(
+    mut commands: Commands,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut settings: ResMut<GameSettings>,
+) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         commands.set_state(AppState::InGame);
     }
@@ -73,12 +81,12 @@ fn update_main_menu(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyC
     println!("{}", settings.number_of_players);
 }
 
-fn setup_in_game (
+fn setup_in_game(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     settings: Res<GameSettings>,
-    mut images: ResMut<Assets<Image>>
+    mut images: ResMut<Assets<Image>>,
 ) {
     let size = 512;
     let texture = Image::new_fill(
@@ -90,19 +98,23 @@ fn setup_in_game (
         TextureDimension::D2,
         &vec![0; (size * size * 4) as usize],
         TextureFormat::Rgba8UnormSrgb,
-        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD
+        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
     );
     let texture_handle = images.add(texture);
-    commands.spawn((Sprite {
-        image: texture_handle.clone(),
-        ..Default::default()
+    commands.spawn((
+        Sprite {
+            image: texture_handle.clone(),
+            ..Default::default()
         },
         Transform {
             translation: Vec3::new(256.0, 256.0, -2.0), // Position in the middle of the camera's view
             scale: Vec3::new(1., -1., 1.),
             ..Default::default()
-        }));
-    commands.insert_resource(TrailTexture {image_handle: texture_handle});
+        },
+    ));
+    commands.insert_resource(TrailTexture {
+        image_handle: texture_handle,
+    });
 
     commands.spawn((
         Camera2d,
@@ -113,7 +125,9 @@ fn setup_in_game (
             Player::new(Color::from(RED)),
             Mesh2d(meshes.add(Circle::default())),
             MeshMaterial2d(materials.add(Color::from(YELLOW))),
-            Transform::default().with_scale(Vec3::splat(5.)).with_translation(Vec3::new(10.,i as f32 * 10.,0.)),
+            Transform::default()
+                .with_scale(Vec3::splat(5.))
+                .with_translation(Vec3::new(10., i as f32 * 10., 0.)),
         ));
     }
 }
@@ -145,7 +159,14 @@ struct TrailTexture {
     image_handle: Handle<Image>,
 }
 
-fn game_logic(mut query: Query<(&mut Transform, &mut Player)>, keyboard_input: Res<ButtonInput<KeyCode>>, time: Res<Time>, mut commands: Commands, mut images: ResMut<Assets<Image>>, trail_texture: Res<TrailTexture>) {
+fn game_logic(
+    mut query: Query<(&mut Transform, &mut Player)>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    mut commands: Commands,
+    mut images: ResMut<Assets<Image>>,
+    trail_texture: Res<TrailTexture>,
+) {
     for (mut transform, mut player) in &mut query {
         if keyboard_input.pressed(KeyCode::ArrowLeft) {
             let rotation = Quat::from_rotation_z(std::f32::consts::PI / 30.0);
@@ -170,6 +191,11 @@ fn game_logic(mut query: Query<(&mut Transform, &mut Player)>, keyboard_input: R
 
         let index = (y * size + x) * 4; // RGBA
         let color = player.color.to_srgba();
-        texture.data[index..index + 4].copy_from_slice(&[(color.red * 255.) as u8, (color.green *255.) as u8, (color.blue * 255.) as u8, (color.alpha * 255.) as u8]);
+        texture.data[index..index + 4].copy_from_slice(&[
+            (color.red * 255.) as u8,
+            (color.green * 255.) as u8,
+            (color.blue * 255.) as u8,
+            (color.alpha * 255.) as u8,
+        ]);
     }
 }
