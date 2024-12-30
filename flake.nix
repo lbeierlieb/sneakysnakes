@@ -27,6 +27,7 @@
           libxkbcommon
           wayland
           rustc
+          rustfmt
           cargo
         ];
 
