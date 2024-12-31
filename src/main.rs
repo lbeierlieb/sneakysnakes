@@ -197,6 +197,7 @@ struct Player {
     speed: f32,
     color: Color,
     steer_keys: (KeyCode, KeyCode),
+    alive: bool,
 }
 
 impl Player {
@@ -206,6 +207,7 @@ impl Player {
             speed: 200.0,
             color,
             steer_keys,
+            alive: true,
         }
     }
 }
@@ -224,6 +226,10 @@ fn game_logic(
     trail_texture: Res<TrailTexture>,
 ) {
     for (mut transform, mut player) in &mut query {
+        if !player.alive {
+            continue;
+        }
+
         let (left_key, right_key) = player.steer_keys;
         if keyboard_input.pressed(left_key) {
             let rotation = Quat::from_rotation_z(std::f32::consts::PI / 60.0);
@@ -261,6 +267,10 @@ fn game_logic(
                 (color.alpha * 255.) as u8,
             ]);
         }
+
+        if is_player_out_of_bounds(pos_after.x, pos_after.y, 10., size) {
+            player.alive = false;
+        }
     }
 }
 
@@ -279,4 +289,9 @@ fn get_all_coordinates_around(x: f32, y: f32, r: f32, size: usize) -> HashSet<(u
         .flat_map(|x| (start_y..end_y).map(move |y| (x, y)))
         .filter(|&(px, py)| Vec2::new(px as f32, py as f32).distance(Vec2::new(x, y)) <= r)
         .collect()
+}
+
+fn is_player_out_of_bounds(x: f32, y: f32, r: f32, size: usize) -> bool {
+    let size = size as f32;
+    x < r || x > size - r || y < r || y > size - r
 }
