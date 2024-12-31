@@ -203,7 +203,7 @@ impl Player {
     fn new(color: Color, dir: Vec3, steer_keys: (KeyCode, KeyCode)) -> Self {
         Player {
             dir,
-            speed: 100.0,
+            speed: 50.0,
             color,
             steer_keys,
         }
@@ -223,11 +223,12 @@ fn game_logic(
     trail_texture: Res<TrailTexture>,
 ) {
     for (mut transform, mut player) in &mut query {
-        if keyboard_input.pressed(KeyCode::ArrowLeft) {
-            let rotation = Quat::from_rotation_z(std::f32::consts::PI / 30.0);
+        let (left_key, right_key) = player.steer_keys;
+        if keyboard_input.pressed(left_key) {
+            let rotation = Quat::from_rotation_z(std::f32::consts::PI / 60.0);
             player.dir = rotation.mul_vec3(player.dir);
-        } else if keyboard_input.pressed(KeyCode::ArrowRight) {
-            let rotation = Quat::from_rotation_z(-std::f32::consts::PI / 30.0);
+        } else if keyboard_input.pressed(right_key) {
+            let rotation = Quat::from_rotation_z(-std::f32::consts::PI / 60.0);
             player.dir = rotation.mul_vec3(player.dir);
         } else if keyboard_input.just_pressed(KeyCode::Escape) {
             commands.set_state(AppState::MainMenu);
