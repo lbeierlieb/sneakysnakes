@@ -1,6 +1,7 @@
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::{color::palettes::basic::*, prelude::*};
+use std::collections::HashSet;
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
 enum AppState {
@@ -187,16 +188,30 @@ fn game_logic(
 
         // Map the world position to texture space
         let size = texture.size().x as usize;
-        let x = (dot_position.x as usize).clamp(0, size - 1);
-        let y = (dot_position.y as usize).clamp(0, size - 1);
 
-        let index = (y * size + x) * 4; // RGBA
-        let color = player.color.to_srgba();
-        texture.data[index..index + 4].copy_from_slice(&[
-            (color.red * 255.) as u8,
-            (color.green * 255.) as u8,
-            (color.blue * 255.) as u8,
-            (color.alpha * 255.) as u8,
-        ]);
+        for (x, y) in get_all_coordinates_around(dot_position.x, dot_position.y, 2.5, size) {
+            let index = (y * size + x) * 4; // RGBA
+            let color = player.color.to_srgba();
+            texture.data[index..index + 4].copy_from_slice(&[
+                (color.red * 255.) as u8,
+                (color.green * 255.) as u8,
+                (color.blue * 255.) as u8,
+                (color.alpha * 255.) as u8,
+            ]);
+        }
     }
+}
+
+fn get_all_coordinates_around(x: f32, y: f32, r: f32, size: usize) -> HashSet<(usize, usize)> {
+    let ux = x as usize;
+    let uy = y as usize;
+    let ur = r as usize;
+
+    let start_x = ux.saturating_sub(ur + 1).clamp(0, size-1);
+    let end_x = (ux + ur + 1).clamp(0, size-1);
+
+    let start_y = uy.saturating_sub(ur + 1).clamp(0, size-1);
+    let end_y = (uy + ur + 1).clamp(0, size-1);
+
+    (start_x..end_x).flat_map(|x| (start_y..end_y).map(move |y| (x, y))).filter(|&(px,py)| Vec2::new(px as f32, py as f32).distance(Vec2::new(x, y)) <= r).collect()
 }
