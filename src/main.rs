@@ -123,11 +123,18 @@ fn setup_in_game(
         Transform::from_translation(Vec3::new(256.0, 256.0, 0.0)),
     ));
     if settings.number_of_players >= 1 {
-        spawn_player(Color::from(RED), &mut commands, &mut meshes, &mut materials);
+        spawn_player(
+            Color::from(RED),
+            (KeyCode::ArrowLeft, KeyCode::ArrowRight),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
     }
     if settings.number_of_players >= 2 {
         spawn_player(
             Color::from(GREEN),
+            (KeyCode::KeyA, KeyCode::KeyD),
             &mut commands,
             &mut meshes,
             &mut materials,
@@ -136,6 +143,7 @@ fn setup_in_game(
     if settings.number_of_players >= 3 {
         spawn_player(
             Color::from(BLUE),
+            (KeyCode::KeyV, KeyCode::KeyN),
             &mut commands,
             &mut meshes,
             &mut materials,
@@ -145,13 +153,14 @@ fn setup_in_game(
 
 fn spawn_player(
     color: Color,
+    steer_keys: (KeyCode, KeyCode),
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<ColorMaterial>>,
 ) {
     let (position, direction) = random_position_and_direction();
     commands.spawn((
-        Player::new(color, direction),
+        Player::new(color, direction, steer_keys),
         Mesh2d(meshes.add(Circle::default())),
         MeshMaterial2d(materials.add(Color::from(YELLOW))),
         Transform::default()
@@ -187,14 +196,16 @@ struct Player {
     dir: Vec3,
     speed: f32,
     color: Color,
+    steer_keys: (KeyCode, KeyCode),
 }
 
 impl Player {
-    fn new(color: Color, dir: Vec3) -> Self {
+    fn new(color: Color, dir: Vec3, steer_keys: (KeyCode, KeyCode)) -> Self {
         Player {
             dir,
             speed: 100.0,
             color,
+            steer_keys,
         }
     }
 }
