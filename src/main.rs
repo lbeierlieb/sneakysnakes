@@ -121,16 +121,26 @@ fn setup_in_game(
         Camera2d,
         Transform::from_translation(Vec3::new(256.0, 256.0, 0.0)),
     ));
-    for i in 0..settings.number_of_players {
+    if settings.number_of_players >= 1 {
+        spawn_player(0, Color::from(RED), &mut commands, &mut meshes, &mut materials);
+    }
+    if settings.number_of_players >= 2 {
+        spawn_player(1, Color::from(GREEN), &mut commands, &mut meshes, &mut materials);
+    }
+    if settings.number_of_players >= 3 {
+        spawn_player(2, Color::from(BLUE), &mut commands, &mut meshes, &mut materials);
+    }
+}
+
+fn spawn_player(i: u8, color: Color, commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<ColorMaterial>>) {
         commands.spawn((
-            Player::new(Color::from(RED)),
+            Player::new(color),
             Mesh2d(meshes.add(Circle::default())),
             MeshMaterial2d(materials.add(Color::from(YELLOW))),
             Transform::default()
                 .with_scale(Vec3::splat(5.))
                 .with_translation(Vec3::new(10., i as f32 * 10., 0.)),
         ));
-    }
 }
 
 fn cleanup_in_game(mut commands: Commands, query: Query<Entity, Or<(With<Camera>, With<Mesh2d>, With<Sprite>)>>, mut images: ResMut<Assets<Image>>, trail_texture: Res<TrailTexture>,) {
