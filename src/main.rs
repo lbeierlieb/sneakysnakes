@@ -1,6 +1,7 @@
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::{color::palettes::basic::*, prelude::*};
+use rand::Rng;
 use std::collections::HashSet;
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
@@ -122,17 +123,10 @@ fn setup_in_game(
         Transform::from_translation(Vec3::new(256.0, 256.0, 0.0)),
     ));
     if settings.number_of_players >= 1 {
-        spawn_player(
-            0,
-            Color::from(RED),
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-        );
+        spawn_player(Color::from(RED), &mut commands, &mut meshes, &mut materials);
     }
     if settings.number_of_players >= 2 {
         spawn_player(
-            1,
             Color::from(GREEN),
             &mut commands,
             &mut meshes,
@@ -141,7 +135,6 @@ fn setup_in_game(
     }
     if settings.number_of_players >= 3 {
         spawn_player(
-            2,
             Color::from(BLUE),
             &mut commands,
             &mut meshes,
@@ -151,20 +144,30 @@ fn setup_in_game(
 }
 
 fn spawn_player(
-    i: u8,
     color: Color,
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<ColorMaterial>>,
 ) {
+    let (position, direction) = random_position_and_direction();
     commands.spawn((
-        Player::new(color),
+        Player::new(color, direction),
         Mesh2d(meshes.add(Circle::default())),
         MeshMaterial2d(materials.add(Color::from(YELLOW))),
         Transform::default()
             .with_scale(Vec3::splat(5.))
-            .with_translation(Vec3::new(10., i as f32 * 10., 0.)),
+            .with_translation(position),
     ));
+}
+
+fn random_position_and_direction() -> (Vec3, Vec3) {
+    let mut rng = rand::thread_rng();
+
+    let position = Vec3::new(rng.gen_range(0.0..512.0), rng.gen_range(0.0..512.0), 0.);
+
+    let direction = Vec3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), 0.).normalize();
+
+    (position, direction)
 }
 
 fn cleanup_in_game(
@@ -187,9 +190,9 @@ struct Player {
 }
 
 impl Player {
-    fn new(color: Color) -> Self {
+    fn new(color: Color, dir: Vec3) -> Self {
         Player {
-            dir: Vec3::new(1., 0., 0.),
+            dir,
             speed: 100.0,
             color,
         }
