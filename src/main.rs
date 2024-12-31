@@ -275,6 +275,14 @@ fn game_logic(
             ]);
         }
 
+        for (x, y) in coords_after_update {
+            let index = (y * size + x) * 4; // RGBA
+            let alpha = texture.data[index + 3];
+            if alpha != 0 {
+                player.alive = false;
+            }
+        }
+
         if is_player_out_of_bounds(pos_after.x, pos_after.y, 10., size) {
             player.alive = false;
         }
