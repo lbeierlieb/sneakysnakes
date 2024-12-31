@@ -90,7 +90,7 @@ fn setup_in_game(
     settings: Res<GameSettings>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    let size = 512;
+    let size = 2048;
     let texture = Image::new_fill(
         Extent3d {
             width: size,
@@ -109,7 +109,7 @@ fn setup_in_game(
             ..Default::default()
         },
         Transform {
-            translation: Vec3::new(256.0, 256.0, -2.0), // Position in the middle of the camera's view
+            translation: Vec3::new(1024.0, 1024.0, -2.0), // Position in the middle of the camera's view
             scale: Vec3::new(1., -1., 1.),
             ..Default::default()
         },
@@ -120,7 +120,7 @@ fn setup_in_game(
 
     commands.spawn((
         Camera2d,
-        Transform::from_translation(Vec3::new(256.0, 256.0, 0.0)),
+        Transform::from_translation(Vec3::new(1024.0, 1024.0, 0.0)).with_scale(Vec3::new(4., 4., 1.)),
     ));
     if settings.number_of_players >= 1 {
         spawn_player(
@@ -164,7 +164,7 @@ fn spawn_player(
         Mesh2d(meshes.add(Circle::default())),
         MeshMaterial2d(materials.add(Color::from(YELLOW))),
         Transform::default()
-            .with_scale(Vec3::splat(5.))
+            .with_scale(Vec3::splat(20.))
             .with_translation(position),
     ));
 }
@@ -203,7 +203,7 @@ impl Player {
     fn new(color: Color, dir: Vec3, steer_keys: (KeyCode, KeyCode)) -> Self {
         Player {
             dir,
-            speed: 50.0,
+            speed: 200.0,
             color,
             steer_keys,
         }
@@ -243,7 +243,7 @@ fn game_logic(
         // Map the world position to texture space
         let size = texture.size().x as usize;
 
-        for (x, y) in get_all_coordinates_around(dot_position.x, dot_position.y, 2.5, size) {
+        for (x, y) in get_all_coordinates_around(dot_position.x, dot_position.y, 10., size) {
             let index = (y * size + x) * 4; // RGBA
             let color = player.color.to_srgba();
             texture.data[index..index + 4].copy_from_slice(&[
