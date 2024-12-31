@@ -209,6 +209,7 @@ impl Player {
         }
     }
 }
+
 #[derive(Resource)]
 struct TrailTexture {
     image_handle: Handle<Image>,
@@ -233,17 +234,24 @@ fn game_logic(
         } else if keyboard_input.just_pressed(KeyCode::Escape) {
             commands.set_state(AppState::MainMenu);
         }
-        transform.translation += player.dir * time.delta_secs() * player.speed;
 
         let texture_handle = &trail_texture.image_handle;
         let texture = images.get_mut(texture_handle).unwrap();
 
-        let dot_position = transform.translation;
-
         // Map the world position to texture space
         let size = texture.size().x as usize;
 
-        for (x, y) in get_all_coordinates_around(dot_position.x, dot_position.y, 10., size) {
+        let pos_before = transform.translation;
+        let coords_before_update = get_all_coordinates_around(pos_before.x, pos_before.y, 10., size);
+
+        transform.translation += player.dir * time.delta_secs() * player.speed;
+
+        let pos_after = transform.translation;
+        let coords_after_update = get_all_coordinates_around(pos_after.x, pos_after.y, 10., size);
+
+        let coords_to_draw = coords_before_update.difference(&coords_after_update).collect::<HashSet<_>>();
+
+        for (x, y) in coords_to_draw {
             let index = (y * size + x) * 4; // RGBA
             let color = player.color.to_srgba();
             texture.data[index..index + 4].copy_from_slice(&[
