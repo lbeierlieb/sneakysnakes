@@ -226,6 +226,10 @@ fn game_logic(
     mut images: ResMut<Assets<Image>>,
     trail_texture: Res<TrailTexture>,
 ) {
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        commands.set_state(AppState::MainMenu);
+    }
+
     for (mut transform, mut player) in &mut query {
         if !player.alive {
             continue;
@@ -235,11 +239,10 @@ fn game_logic(
         if keyboard_input.pressed(left_key) {
             let rotation = Quat::from_rotation_z(std::f32::consts::PI / 60.0);
             player.dir = rotation.mul_vec3(player.dir);
-        } else if keyboard_input.pressed(right_key) {
+        }
+        if keyboard_input.pressed(right_key) {
             let rotation = Quat::from_rotation_z(-std::f32::consts::PI / 60.0);
             player.dir = rotation.mul_vec3(player.dir);
-        } else if keyboard_input.just_pressed(KeyCode::Escape) {
-            commands.set_state(AppState::MainMenu);
         }
 
         let texture_handle = &trail_texture.image_handle;
