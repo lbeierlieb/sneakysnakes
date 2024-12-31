@@ -120,7 +120,8 @@ fn setup_in_game(
 
     commands.spawn((
         Camera2d,
-        Transform::from_translation(Vec3::new(1024.0, 1024.0, 0.0)).with_scale(Vec3::new(4., 4., 1.)),
+        Transform::from_translation(Vec3::new(1024.0, 1024.0, 0.0))
+            .with_scale(Vec3::new(4., 4., 1.)),
     ));
     if settings.number_of_players >= 1 {
         spawn_player(
@@ -248,14 +249,17 @@ fn game_logic(
         let size = texture.size().x as usize;
 
         let pos_before = transform.translation;
-        let coords_before_update = get_all_coordinates_around(pos_before.x, pos_before.y, 10., size);
+        let coords_before_update =
+            get_all_coordinates_around(pos_before.x, pos_before.y, 10., size);
 
         transform.translation += player.dir * time.delta_secs() * player.speed;
 
         let pos_after = transform.translation;
         let coords_after_update = get_all_coordinates_around(pos_after.x, pos_after.y, 10., size);
 
-        let coords_to_draw = coords_before_update.difference(&coords_after_update).collect::<HashSet<_>>();
+        let coords_to_draw = coords_before_update
+            .difference(&coords_after_update)
+            .collect::<HashSet<_>>();
 
         for (x, y) in coords_to_draw {
             let index = (y * size + x) * 4; // RGBA
