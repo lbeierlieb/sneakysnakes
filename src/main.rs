@@ -132,10 +132,11 @@ fn setup_in_game(
     }
 }
 
-fn cleanup_in_game(mut commands: Commands, query: Query<Entity, Or<(With<Camera>, With<Mesh2d>)>>) {
+fn cleanup_in_game(mut commands: Commands, query: Query<Entity, Or<(With<Camera>, With<Mesh2d>, With<Sprite>)>>, mut images: ResMut<Assets<Image>>, trail_texture: Res<TrailTexture>,) {
     for entity in &query {
         commands.entity(entity).despawn();
     }
+    images.remove(&trail_texture.image_handle);
 }
 
 #[derive(Component)]
