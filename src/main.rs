@@ -122,28 +122,57 @@ fn setup_in_game(
         Transform::from_translation(Vec3::new(256.0, 256.0, 0.0)),
     ));
     if settings.number_of_players >= 1 {
-        spawn_player(0, Color::from(RED), &mut commands, &mut meshes, &mut materials);
+        spawn_player(
+            0,
+            Color::from(RED),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
     }
     if settings.number_of_players >= 2 {
-        spawn_player(1, Color::from(GREEN), &mut commands, &mut meshes, &mut materials);
+        spawn_player(
+            1,
+            Color::from(GREEN),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
     }
     if settings.number_of_players >= 3 {
-        spawn_player(2, Color::from(BLUE), &mut commands, &mut meshes, &mut materials);
+        spawn_player(
+            2,
+            Color::from(BLUE),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
     }
 }
 
-fn spawn_player(i: u8, color: Color, commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<ColorMaterial>>) {
-        commands.spawn((
-            Player::new(color),
-            Mesh2d(meshes.add(Circle::default())),
-            MeshMaterial2d(materials.add(Color::from(YELLOW))),
-            Transform::default()
-                .with_scale(Vec3::splat(5.))
-                .with_translation(Vec3::new(10., i as f32 * 10., 0.)),
-        ));
+fn spawn_player(
+    i: u8,
+    color: Color,
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+) {
+    commands.spawn((
+        Player::new(color),
+        Mesh2d(meshes.add(Circle::default())),
+        MeshMaterial2d(materials.add(Color::from(YELLOW))),
+        Transform::default()
+            .with_scale(Vec3::splat(5.))
+            .with_translation(Vec3::new(10., i as f32 * 10., 0.)),
+    ));
 }
 
-fn cleanup_in_game(mut commands: Commands, query: Query<Entity, Or<(With<Camera>, With<Mesh2d>, With<Sprite>)>>, mut images: ResMut<Assets<Image>>, trail_texture: Res<TrailTexture>,) {
+fn cleanup_in_game(
+    mut commands: Commands,
+    query: Query<Entity, Or<(With<Camera>, With<Mesh2d>, With<Sprite>)>>,
+    mut images: ResMut<Assets<Image>>,
+    trail_texture: Res<TrailTexture>,
+) {
     for entity in &query {
         commands.entity(entity).despawn();
     }
@@ -217,11 +246,14 @@ fn get_all_coordinates_around(x: f32, y: f32, r: f32, size: usize) -> HashSet<(u
     let uy = y as usize;
     let ur = r as usize;
 
-    let start_x = ux.saturating_sub(ur + 1).clamp(0, size-1);
-    let end_x = (ux + ur + 1).clamp(0, size-1);
+    let start_x = ux.saturating_sub(ur + 1).clamp(0, size - 1);
+    let end_x = (ux + ur + 1).clamp(0, size - 1);
 
-    let start_y = uy.saturating_sub(ur + 1).clamp(0, size-1);
-    let end_y = (uy + ur + 1).clamp(0, size-1);
+    let start_y = uy.saturating_sub(ur + 1).clamp(0, size - 1);
+    let end_y = (uy + ur + 1).clamp(0, size - 1);
 
-    (start_x..end_x).flat_map(|x| (start_y..end_y).map(move |y| (x, y))).filter(|&(px,py)| Vec2::new(px as f32, py as f32).distance(Vec2::new(x, y)) <= r).collect()
+    (start_x..end_x)
+        .flat_map(|x| (start_y..end_y).map(move |y| (x, y)))
+        .filter(|&(px, py)| Vec2::new(px as f32, py as f32).distance(Vec2::new(x, y)) <= r)
+        .collect()
 }
