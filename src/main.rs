@@ -173,7 +173,7 @@ fn spawn_player(
 fn random_position_and_direction() -> (Vec3, Vec3) {
     let mut rng = rand::thread_rng();
 
-    let position = Vec3::new(rng.gen_range(0.0..512.0), rng.gen_range(0.0..512.0), 0.);
+    let position = Vec3::new(rng.gen_range(100.0..1948.0), rng.gen_range(100.0..1948.0), 0.);
 
     let direction = Vec3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), 0.).normalize();
 
