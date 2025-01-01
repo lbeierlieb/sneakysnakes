@@ -41,7 +41,9 @@ fn main() {
         .add_systems(OnEnter(AppState::MainMenu), setup_main_menu.after(cleanup_in_game))
         .add_systems(OnExit(AppState::MainMenu), cleanup_main_menu)
         .add_systems(OnEnter(AppState::RoundActive), setup_in_game)
+        .add_systems(OnEnter(AppState::RoundOver), setup_round_over)
         .add_systems(OnExit(AppState::RoundOver), cleanup_in_game)
+        .add_systems(OnExit(AppState::RoundOver), cleanup_round_over)
         .add_systems(
             Update,
             update_main_menu.run_if(in_state(AppState::MainMenu)),
@@ -90,12 +92,36 @@ fn update_main_menu(
     }
 }
 
+fn setup_round_over(mut commands: Commands, query: Query<&Player>) {
+    let mut winner_name = None;
+    for player in &query {
+        if player.alive {
+            winner_name = Some(player.name.clone());
+        }
+    }
+    let text = match winner_name {
+        Some(name) => format!("Player {} won!", name),
+        None => "lol! Nobody won this round".to_string(),
+    };
+    commands.spawn((Text2d::new(text),Transform::from_translation(Vec3::new(1024., 1024., 2.)),
+        TextFont {
+            font_size: 130.0,
+            ..default()         
+        },));
+}
+
 fn update_round_over(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         commands.set_state(AppState::RoundActive);
     }
     if keyboard_input.just_pressed(KeyCode::Escape) {
         commands.set_state(AppState::MainMenu);
+    }
+}
+
+fn cleanup_round_over(mut commands: Commands, query: Query<Entity, With<Text2d>>) {
+    for entity in &query {
+        commands.entity(entity).despawn();
     }
 }
 
@@ -141,6 +167,7 @@ fn setup_in_game(
     ));
     if settings.number_of_players >= 1 {
         spawn_player(
+            "RED".to_string(),
             Color::from(RED),
             (KeyCode::ArrowLeft, KeyCode::ArrowRight),
             &mut commands,
@@ -150,6 +177,7 @@ fn setup_in_game(
     }
     if settings.number_of_players >= 2 {
         spawn_player(
+            "GREEN".to_string(),
             Color::from(GREEN),
             (KeyCode::KeyA, KeyCode::KeyD),
             &mut commands,
@@ -159,6 +187,7 @@ fn setup_in_game(
     }
     if settings.number_of_players >= 3 {
         spawn_player(
+            "BLUE".to_string(),
             Color::from(BLUE),
             (KeyCode::KeyV, KeyCode::KeyN),
             &mut commands,
@@ -169,6 +198,7 @@ fn setup_in_game(
 }
 
 fn spawn_player(
+    name: String,
     color: Color,
     steer_keys: (KeyCode, KeyCode),
     commands: &mut Commands,
@@ -177,7 +207,7 @@ fn spawn_player(
 ) {
     let (position, direction) = random_position_and_direction();
     commands.spawn((
-        Player::new(color, direction, steer_keys),
+        Player::new(name, color, direction, steer_keys),
         Mesh2d(meshes.add(Circle::default())),
         MeshMaterial2d(materials.add(Color::from(YELLOW))),
         Transform::default()
@@ -210,6 +240,7 @@ fn cleanup_in_game(
 
 #[derive(Component)]
 struct Player {
+    name: String,
     dir: Vec3,
     speed: f32,
     color: Color,
@@ -218,8 +249,9 @@ struct Player {
 }
 
 impl Player {
-    fn new(color: Color, dir: Vec3, steer_keys: (KeyCode, KeyCode)) -> Self {
+    fn new(name: String, color: Color, dir: Vec3, steer_keys: (KeyCode, KeyCode)) -> Self {
         Player {
+            name,
             dir,
             speed: 200.0,
             color,
