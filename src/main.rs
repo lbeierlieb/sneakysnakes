@@ -70,6 +70,7 @@ fn update_main_menu(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut settings: ResMut<GameSettings>,
+    mut query: Query<&mut Text2d>
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         commands.set_state(AppState::RoundActive);
@@ -84,7 +85,9 @@ fn update_main_menu(
             settings.number_of_players += 1;
         }
     }
-    println!("{}", settings.number_of_players);
+    if let Ok(mut text) = query.get_single_mut() {
+        text.0 = format!("Number of players: {}", settings.number_of_players);
+    }
 }
 
 fn update_round_over(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
