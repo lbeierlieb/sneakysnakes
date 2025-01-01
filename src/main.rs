@@ -7,7 +7,8 @@ use std::collections::HashSet;
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
 enum AppState {
     MainMenu,
-    InGame,
+    RoundActive,
+    RoundOver,
 }
 
 #[derive(Resource)]
@@ -36,15 +37,18 @@ fn main() {
         }))
         .insert_state::<AppState>(AppState::MainMenu)
         .insert_resource(GameSettings::default())
-        .add_systems(OnEnter(AppState::MainMenu), setup_main_menu)
+        .add_systems(OnEnter(AppState::MainMenu), cleanup_in_game)
+        .add_systems(OnEnter(AppState::MainMenu), setup_main_menu.after(cleanup_in_game))
         .add_systems(OnExit(AppState::MainMenu), cleanup_main_menu)
-        .add_systems(OnEnter(AppState::InGame), setup_in_game)
-        .add_systems(OnExit(AppState::InGame), cleanup_in_game)
+        .add_systems(OnEnter(AppState::RoundActive), setup_in_game)
+        .add_systems(OnExit(AppState::RoundOver), cleanup_in_game)
         .add_systems(
             Update,
             update_main_menu.run_if(in_state(AppState::MainMenu)),
         )
-        .add_systems(Update, game_logic.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, game_logic.run_if(in_state(AppState::RoundActive)))
+        .add_systems(Update, check_round_over.run_if(in_state(AppState::RoundActive)).after(game_logic))
+        .add_systems(Update, update_round_over.run_if(in_state(AppState::RoundOver)))
         .run();
 }
 
@@ -68,7 +72,7 @@ fn update_main_menu(
     mut settings: ResMut<GameSettings>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
-        commands.set_state(AppState::InGame);
+        commands.set_state(AppState::RoundActive);
     }
     if keyboard_input.just_pressed(KeyCode::ArrowLeft) {
         if settings.number_of_players > 1 {
@@ -81,6 +85,15 @@ fn update_main_menu(
         }
     }
     println!("{}", settings.number_of_players);
+}
+
+fn update_round_over(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        commands.set_state(AppState::RoundActive);
+    }
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        commands.set_state(AppState::MainMenu);
+    }
 }
 
 fn setup_in_game(
@@ -286,6 +299,18 @@ fn game_logic(
         if is_player_out_of_bounds(pos_after.x, pos_after.y, 10., size) {
             player.alive = false;
         }
+    }
+}
+
+fn check_round_over(mut commands: Commands, query: Query<&Player>) {
+    let mut players_alive = 0;
+    for player in &query {
+        if player.alive {
+            players_alive += 1;
+        }
+    }
+    if players_alive <= 1 {
+        commands.set_state(AppState::RoundOver);
     }
 }
 
