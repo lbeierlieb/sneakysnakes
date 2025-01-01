@@ -3,6 +3,7 @@ use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::{color::palettes::basic::*, prelude::*};
 use rand::Rng;
 use std::collections::HashSet;
+use std::time::Duration;
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
 enum AppState {
@@ -264,6 +265,7 @@ struct Player {
     color: Color,
     steer_keys: (KeyCode, KeyCode),
     alive: bool,
+    gap_state: PlayerGapState,
 }
 
 impl Player {
@@ -275,6 +277,46 @@ impl Player {
             color,
             steer_keys,
             alive: true,
+            gap_state: PlayerGapState::new(),
+        }
+    }
+}
+
+struct PlayerGapState {
+    gapping: bool,
+    timer: Timer,
+}
+
+impl PlayerGapState {
+    fn new() -> Self {
+        Self {
+            gapping: false,
+            timer: PlayerGapState::random_timer(),
+        }
+    }
+
+    fn random_timer() -> Timer {
+        let mut rng = rand::thread_rng();
+        Timer::new(
+            Duration::from_millis(rng.gen_range(1000..5000)),
+            TimerMode::Once,
+        )
+    }
+
+    fn gap_timer() -> Timer {
+        Timer::new(Duration::from_millis(300), TimerMode::Once)
+    }
+
+    fn update(&mut self, delta: Duration) {
+        self.timer.tick(delta);
+        if self.timer.finished() {
+            if self.gapping {
+                self.gapping = false;
+                self.timer = PlayerGapState::random_timer();
+            } else {
+                self.gapping = true;
+                self.timer = PlayerGapState::gap_timer();
+            }
         }
     }
 }
@@ -326,19 +368,22 @@ fn game_logic(
         let pos_after = transform.translation;
         let coords_after_update = get_all_coordinates_around(pos_after.x, pos_after.y, 10., size);
 
-        let coords_to_draw = coords_before_update
-            .difference(&coords_after_update)
-            .collect::<HashSet<_>>();
+        player.gap_state.update(time.delta());
+        if !player.gap_state.gapping {
+            let coords_to_draw = coords_before_update
+                .difference(&coords_after_update)
+                .collect::<HashSet<_>>();
 
-        for (x, y) in coords_to_draw {
-            let index = (y * size + x) * 4; // RGBA
-            let color = player.color.to_srgba();
-            texture.data[index..index + 4].copy_from_slice(&[
-                (color.red * 255.) as u8,
-                (color.green * 255.) as u8,
-                (color.blue * 255.) as u8,
-                (color.alpha * 255.) as u8,
-            ]);
+            for (x, y) in coords_to_draw {
+                let index = (y * size + x) * 4; // RGBA
+                let color = player.color.to_srgba();
+                texture.data[index..index + 4].copy_from_slice(&[
+                    (color.red * 255.) as u8,
+                    (color.green * 255.) as u8,
+                    (color.blue * 255.) as u8,
+                    (color.alpha * 255.) as u8,
+                ]);
+            }
         }
 
         for (x, y) in coords_after_update {
