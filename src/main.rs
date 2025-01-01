@@ -38,7 +38,10 @@ fn main() {
         .insert_state::<AppState>(AppState::MainMenu)
         .insert_resource(GameSettings::default())
         .add_systems(OnEnter(AppState::MainMenu), cleanup_in_game)
-        .add_systems(OnEnter(AppState::MainMenu), setup_main_menu.after(cleanup_in_game))
+        .add_systems(
+            OnEnter(AppState::MainMenu),
+            setup_main_menu.after(cleanup_in_game),
+        )
         .add_systems(OnExit(AppState::MainMenu), cleanup_main_menu)
         .add_systems(OnEnter(AppState::RoundActive), setup_in_game)
         .add_systems(OnEnter(AppState::RoundOver), setup_round_over)
@@ -49,8 +52,16 @@ fn main() {
             update_main_menu.run_if(in_state(AppState::MainMenu)),
         )
         .add_systems(Update, game_logic.run_if(in_state(AppState::RoundActive)))
-        .add_systems(Update, check_round_over.run_if(in_state(AppState::RoundActive)).after(game_logic))
-        .add_systems(Update, update_round_over.run_if(in_state(AppState::RoundOver)))
+        .add_systems(
+            Update,
+            check_round_over
+                .run_if(in_state(AppState::RoundActive))
+                .after(game_logic),
+        )
+        .add_systems(
+            Update,
+            update_round_over.run_if(in_state(AppState::RoundOver)),
+        )
         .run();
 }
 
@@ -72,7 +83,7 @@ fn update_main_menu(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut settings: ResMut<GameSettings>,
-    mut query: Query<&mut Text2d>
+    mut query: Query<&mut Text2d>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         commands.set_state(AppState::RoundActive);
@@ -103,11 +114,14 @@ fn setup_round_over(mut commands: Commands, query: Query<&Player>) {
         Some(name) => format!("Player {} won!", name),
         None => "lol! Nobody won this round".to_string(),
     };
-    commands.spawn((Text2d::new(text),Transform::from_translation(Vec3::new(1024., 1024., 2.)),
+    commands.spawn((
+        Text2d::new(text),
+        Transform::from_translation(Vec3::new(1024., 1024., 2.)),
         TextFont {
             font_size: 130.0,
-            ..default()         
-        },));
+            ..default()
+        },
+    ));
 }
 
 fn update_round_over(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
@@ -219,7 +233,11 @@ fn spawn_player(
 fn random_position_and_direction() -> (Vec3, Vec3) {
     let mut rng = rand::thread_rng();
 
-    let position = Vec3::new(rng.gen_range(100.0..1948.0), rng.gen_range(100.0..1948.0), 0.);
+    let position = Vec3::new(
+        rng.gen_range(100.0..1948.0),
+        rng.gen_range(100.0..1948.0),
+        0.,
+    );
 
     let direction = Vec3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), 0.).normalize();
 
