@@ -53,7 +53,16 @@ fn main() {
             update_main_menu.run_if(in_state(AppState::MainMenu)),
         )
         .add_systems(Update, spawn_items.run_if(in_state(AppState::RoundActive)))
-        .add_systems(Update, game_logic.run_if(in_state(AppState::RoundActive)))
+        .add_systems(
+            Update,
+            update_player_item_effects.run_if(in_state(AppState::RoundActive)),
+        )
+        .add_systems(
+            Update,
+            game_logic
+                .run_if(in_state(AppState::RoundActive))
+                .after(update_player_item_effects),
+        )
         .add_systems(
             Update,
             check_round_over
@@ -274,7 +283,7 @@ struct Player {
     steer_keys: (KeyCode, KeyCode),
     alive: bool,
     gap_state: PlayerGapState,
-    item_effects: Vec<ItemEffectIndividual>,
+    item_effects: Vec<(ItemEffectIndividual, Timer)>,
 }
 
 impl Player {
@@ -294,15 +303,33 @@ impl Player {
         let count_speed = self
             .item_effects
             .iter()
-            .filter(|effect| **effect == ItemEffectIndividual::Speed)
+            .filter(|(effect, _)| *effect == ItemEffectIndividual::Speed)
             .count();
         let count_slow = self
             .item_effects
             .iter()
-            .filter(|effect| **effect == ItemEffectIndividual::Slowness)
+            .filter(|(effect, _)| *effect == ItemEffectIndividual::Slowness)
             .count();
 
         count_speed as i64 - count_slow as i64
+    }
+
+    fn update_item_effects(&mut self, delta: Duration) {
+        let mut indices_to_remove = vec![];
+        for (index, tuple) in self.item_effects.iter_mut().enumerate() {
+            tuple.1.tick(delta);
+            if tuple.1.finished() {
+                indices_to_remove.push(index);
+            }
+        }
+        for index in indices_to_remove.into_iter().rev() {
+            self.item_effects.remove(index);
+        }
+    }
+
+    fn add_effect(&mut self, effect: ItemEffectIndividual) {
+        self.item_effects
+            .push((effect, Timer::new(Duration::from_secs(5), TimerMode::Once)));
     }
 }
 
@@ -577,6 +604,12 @@ fn spawn_items(
     }
 }
 
+fn update_player_item_effects(mut query: Query<&mut Player>, time: Res<Time>) {
+    for mut player in &mut query {
+        player.update_item_effects(time.delta());
+    }
+}
+
 fn item_collection(
     mut commands: Commands,
     mut player_query: Query<(&mut Player, &Transform)>,
@@ -591,7 +624,7 @@ fn item_collection(
             let item_xy = Vec2::new(item_translation.x, item_translation.y);
 
             if player_xy.distance(item_xy) <= 85. {
-                player.item_effects.push(item.effect);
+                player.add_effect(item.effect);
                 commands.entity(entity).despawn_recursive();
             }
         }
