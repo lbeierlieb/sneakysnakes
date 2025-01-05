@@ -270,11 +270,11 @@ fn cleanup_in_game(
 struct Player {
     name: String,
     dir: Vec3,
-    speed: f32,
     color: Color,
     steer_keys: (KeyCode, KeyCode),
     alive: bool,
     gap_state: PlayerGapState,
+    item_effects: Vec<ItemEffectIndividual>,
 }
 
 impl Player {
@@ -282,12 +282,27 @@ impl Player {
         Player {
             name,
             dir,
-            speed: 200.0,
             color,
             steer_keys,
             alive: true,
             gap_state: PlayerGapState::new(),
+            item_effects: Vec::new(),
         }
+    }
+
+    fn speed_mod(&self) -> i64 {
+        let count_speed = self
+            .item_effects
+            .iter()
+            .filter(|effect| **effect == ItemEffectIndividual::Speed)
+            .count();
+        let count_slow = self
+            .item_effects
+            .iter()
+            .filter(|effect| **effect == ItemEffectIndividual::Slowness)
+            .count();
+
+        count_speed as i64 - count_slow as i64
     }
 }
 
@@ -336,7 +351,9 @@ struct TrailTexture {
 }
 
 #[derive(Component)]
-struct Item {}
+struct Item {
+    effect: ItemEffectIndividual,
+}
 
 fn game_logic(
     mut query: Query<(&mut Transform, &mut Player)>,
@@ -375,7 +392,10 @@ fn game_logic(
         let coords_before_update =
             get_all_coordinates_around(pos_before.x, pos_before.y, 10., size);
 
-        transform.translation += player.dir * time.delta_secs() * player.speed;
+        let player_base_speed = 200.;
+        let modifier = player.speed_mod() as f32 * 0.25 + 1.;
+        let player_speed = player_base_speed * modifier;
+        transform.translation += player.dir * time.delta_secs() * player_speed;
 
         let pos_after = transform.translation;
         let coords_after_update = get_all_coordinates_around(pos_after.x, pos_after.y, 10., size);
@@ -493,6 +513,24 @@ impl ItemSpawnState {
     }
 }
 
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum ItemEffectIndividual {
+    Speed,
+    Slowness,
+}
+
+impl ItemEffectIndividual {
+    fn get_random() -> Self {
+        let mut rng = rand::thread_rng();
+
+        match rng.gen_range(0..2) {
+            0 => Self::Speed,
+            1 => Self::Slowness,
+            _ => panic!("item randomizer is broken"),
+        }
+    }
+}
+
 fn spawn_items(
     mut commands: Commands,
     mut spawn_state: ResMut<ItemSpawnState>,
@@ -502,7 +540,9 @@ fn spawn_items(
 ) {
     if spawn_state.update(time.delta()) {
         commands.spawn((
-            Item {},
+            Item {
+                effect: ItemEffectIndividual::get_random(),
+            },
             Mesh2d(meshes.add(Circle::default())),
             MeshMaterial2d(materials.add(Color::from(GREEN))),
             Transform::default()
@@ -526,6 +566,7 @@ fn item_collection(
             let item_xy = Vec2::new(item_translation.x, item_translation.y);
 
             if player_xy.distance(item_xy) <= 85. {
+                player.item_effects.push(item.effect);
                 commands.entity(entity).despawn();
             }
         }
