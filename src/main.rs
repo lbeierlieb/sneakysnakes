@@ -52,10 +52,7 @@ fn main() {
             Update,
             update_main_menu.run_if(in_state(AppState::MainMenu)),
         )
-        .add_systems(
-            Update,
-            spawn_items.run_if(in_state(AppState::RoundActive)),
-        )
+        .add_systems(Update, spawn_items.run_if(in_state(AppState::RoundActive)))
         .add_systems(Update, game_logic.run_if(in_state(AppState::RoundActive)))
         .add_systems(
             Update,
@@ -339,9 +336,7 @@ struct TrailTexture {
 }
 
 #[derive(Component)]
-struct Item {
-
-}
+struct Item {}
 
 fn game_logic(
     mut query: Query<(&mut Transform, &mut Player)>,
@@ -498,7 +493,13 @@ impl ItemSpawnState {
     }
 }
 
-fn spawn_items(mut commands: Commands, mut spawn_state: ResMut<ItemSpawnState>, time: Res<Time>, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<ColorMaterial>>) {
+fn spawn_items(
+    mut commands: Commands,
+    mut spawn_state: ResMut<ItemSpawnState>,
+    time: Res<Time>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
     if spawn_state.update(time.delta()) {
         commands.spawn((
             Item {},
@@ -511,7 +512,11 @@ fn spawn_items(mut commands: Commands, mut spawn_state: ResMut<ItemSpawnState>, 
     }
 }
 
-fn item_collection(mut commands: Commands, mut player_query: Query<(&mut Player, &Transform)>, item_query: Query<(Entity, &Item, &Transform)>) {
+fn item_collection(
+    mut commands: Commands,
+    mut player_query: Query<(&mut Player, &Transform)>,
+    item_query: Query<(Entity, &Item, &Transform)>,
+) {
     for (mut player, player_transform) in &mut player_query {
         let player_translation = player_transform.translation;
         let player_xy = Vec2::new(player_translation.x, player_translation.y);
