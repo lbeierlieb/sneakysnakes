@@ -65,6 +65,12 @@ fn main() {
         )
         .add_systems(
             Update,
+            item_collection
+                .run_if(in_state(AppState::RoundActive))
+                .after(game_logic),
+        )
+        .add_systems(
+            Update,
             update_round_over.run_if(in_state(AppState::RoundOver)),
         )
         .run();
@@ -499,5 +505,21 @@ fn spawn_items(mut commands: Commands, mut spawn_state: ResMut<ItemSpawnState>, 
                 .with_scale(Vec3::splat(150.))
                 .with_translation(ItemSpawnState::random_position()),
         ));
+    }
+}
+
+fn item_collection(mut commands: Commands, mut player_query: Query<(&mut Player, &Transform)>, item_query: Query<(Entity, &Item, &Transform)>) {
+    for (mut player, player_transform) in &mut player_query {
+        let player_translation = player_transform.translation;
+        let player_xy = Vec2::new(player_translation.x, player_translation.y);
+
+        for (entity, item, item_transform) in &item_query {
+            let item_translation = item_transform.translation;
+            let item_xy = Vec2::new(item_translation.x, item_translation.y);
+
+            if player_xy.distance(item_xy) <= 85. {
+                commands.entity(entity).despawn();
+            }
+        }
     }
 }
