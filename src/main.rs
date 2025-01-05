@@ -8,6 +8,7 @@ use std::time::Duration;
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
 enum AppState {
     MainMenu,
+    RoundStart,
     RoundActive,
     RoundOver,
 }
@@ -44,10 +45,18 @@ fn main() {
             setup_main_menu.after(cleanup_in_game),
         )
         .add_systems(OnExit(AppState::MainMenu), cleanup_main_menu)
-        .add_systems(OnEnter(AppState::RoundActive), setup_in_game)
+        .add_systems(OnEnter(AppState::RoundStart), setup_in_game)
+        .add_systems(
+            OnEnter(AppState::RoundStart),
+            move_players_a_bit.after(setup_in_game),
+        )
         .add_systems(OnEnter(AppState::RoundOver), setup_round_over)
         .add_systems(OnExit(AppState::RoundOver), cleanup_in_game)
         .add_systems(OnExit(AppState::RoundOver), cleanup_round_over)
+        .add_systems(
+            Update,
+            update_round_start.run_if(in_state(AppState::RoundStart)),
+        )
         .add_systems(
             Update,
             update_main_menu.run_if(in_state(AppState::MainMenu)),
@@ -103,7 +112,7 @@ fn update_main_menu(
     mut query: Query<&mut Text2d>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
-        commands.set_state(AppState::RoundActive);
+        commands.set_state(AppState::RoundStart);
     }
     if keyboard_input.just_pressed(KeyCode::ArrowLeft) {
         if settings.number_of_players > 1 {
@@ -141,9 +150,18 @@ fn setup_round_over(mut commands: Commands, query: Query<&Player>) {
     ));
 }
 
-fn update_round_over(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
+fn update_round_start(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         commands.set_state(AppState::RoundActive);
+    }
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        commands.set_state(AppState::MainMenu);
+    }
+}
+
+fn update_round_over(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        commands.set_state(AppState::RoundStart);
     }
     if keyboard_input.just_pressed(KeyCode::Escape) {
         commands.set_state(AppState::MainMenu);
@@ -228,6 +246,41 @@ fn setup_in_game(
     }
 
     commands.insert_resource(ItemSpawnState::new());
+}
+
+fn move_players_a_bit(
+    query: Query<(&Transform, &Player)>,
+    mut images: ResMut<Assets<Image>>,
+    trail_texture: Res<TrailTexture>,
+) {
+    let texture_handle = &trail_texture.image_handle;
+    let texture = images.get_mut(texture_handle).unwrap();
+    let size = texture.size().x as usize;
+
+    for (transform, player) in &query {
+        let mut pos = transform.translation;
+        for _ in 0..5 {
+            let coords = get_all_coordinates_around(pos.x, pos.y, 10., size);
+
+            let pos_before = pos - player.dir * 5.;
+
+            let coords_before = get_all_coordinates_around(pos_before.x, pos_before.y, 10., size);
+
+            let coords_to_draw = coords_before.difference(&coords).collect::<HashSet<_>>();
+
+            for (x, y) in coords_to_draw {
+                let index = (y * size + x) * 4; // RGBA
+                let color = player.color.to_srgba();
+                texture.data[index..index + 4].copy_from_slice(&[
+                    (color.red * 255.) as u8,
+                    (color.green * 255.) as u8,
+                    (color.blue * 255.) as u8,
+                    (color.alpha * 255.) as u8,
+                ]);
+            }
+            pos = pos_before;
+        }
+    }
 }
 
 fn spawn_player(
