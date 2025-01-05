@@ -393,7 +393,7 @@ fn game_logic(
             get_all_coordinates_around(pos_before.x, pos_before.y, 10., size);
 
         let player_base_speed = 200.;
-        let modifier = player.speed_mod() as f32 * 0.25 + 1.;
+        let modifier = player.speed_mod() as f32 * 0.35 + 1.;
         let player_speed = player_base_speed * modifier;
         transform.translation += player.dir * time.delta_secs() * player_speed;
 
@@ -529,6 +529,14 @@ impl ItemEffectIndividual {
             _ => panic!("item randomizer is broken"),
         }
     }
+
+    fn get_text(&self) -> String {
+        match self {
+            Self::Speed => "fast",
+            Self::Slowness => "slow",
+        }
+        .to_string()
+    }
 }
 
 fn spawn_items(
@@ -539,16 +547,33 @@ fn spawn_items(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     if spawn_state.update(time.delta()) {
-        commands.spawn((
-            Item {
-                effect: ItemEffectIndividual::get_random(),
-            },
-            Mesh2d(meshes.add(Circle::default())),
-            MeshMaterial2d(materials.add(Color::from(GREEN))),
-            Transform::default()
-                .with_scale(Vec3::splat(150.))
-                .with_translation(ItemSpawnState::random_position()),
-        ));
+        let effect = ItemEffectIndividual::get_random();
+        let entity = commands
+            .spawn((
+                Item { effect },
+                Mesh2d(meshes.add(Circle::default())),
+                MeshMaterial2d(materials.add(Color::from(GREEN))),
+                Transform::default()
+                    .with_scale(Vec3::splat(1.))
+                    .with_translation(ItemSpawnState::random_position()),
+            ))
+            .id();
+
+        commands.entity(entity).with_children(|parent| {
+            parent.spawn((
+                Text2d::new(effect.get_text()),
+                TextFont {
+                    font_size: 50.0,
+                    ..default()
+                },
+                Transform::from_translation(Vec3::new(0., 0., 0.2)),
+            ));
+            parent.spawn((
+                Mesh2d(meshes.add(Circle::default())),
+                MeshMaterial2d(materials.add(Color::from(GREEN))),
+                Transform::from_translation(Vec3::new(0., 0., 0.1)).with_scale(Vec3::splat(150.)),
+            ));
+        });
     }
 }
 
@@ -567,7 +592,7 @@ fn item_collection(
 
             if player_xy.distance(item_xy) <= 85. {
                 player.item_effects.push(item.effect);
-                commands.entity(entity).despawn();
+                commands.entity(entity).despawn_recursive();
             }
         }
     }
