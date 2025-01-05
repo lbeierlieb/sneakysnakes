@@ -419,6 +419,9 @@ fn game_logic(
 
 fn check_round_over(mut commands: Commands, query: Query<&Player>) {
     let mut players_alive = 0;
+    if query.iter().count() == 1 {
+        return;
+    }
     for player in &query {
         if player.alive {
             players_alive += 1;
