@@ -52,6 +52,10 @@ fn main() {
             Update,
             update_main_menu.run_if(in_state(AppState::MainMenu)),
         )
+        .add_systems(
+            Update,
+            spawn_items.run_if(in_state(AppState::RoundActive)),
+        )
         .add_systems(Update, game_logic.run_if(in_state(AppState::RoundActive)))
         .add_systems(
             Update,
@@ -210,6 +214,8 @@ fn setup_in_game(
             &mut materials,
         );
     }
+
+    commands.insert_resource(ItemSpawnState::new());
 }
 
 fn spawn_player(
@@ -326,6 +332,11 @@ struct TrailTexture {
     image_handle: Handle<Image>,
 }
 
+#[derive(Component)]
+struct Item {
+
+}
+
 fn game_logic(
     mut query: Query<(&mut Transform, &mut Player)>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -432,4 +443,61 @@ fn get_all_coordinates_around(x: f32, y: f32, r: f32, size: usize) -> HashSet<(u
 fn is_player_out_of_bounds(x: f32, y: f32, r: f32, size: usize) -> bool {
     let size = size as f32;
     x < r || x > size - r || y < r || y > size - r
+}
+
+#[derive(Resource)]
+struct ItemSpawnState {
+    time_to_next_spawn: Timer,
+}
+
+impl ItemSpawnState {
+    fn new() -> Self {
+        let mut rng = rand::thread_rng();
+        let time_to_next_spawn = Timer::new(
+            Duration::from_millis(rng.gen_range(1000..5000)),
+            TimerMode::Once,
+        );
+        ItemSpawnState { time_to_next_spawn }
+    }
+
+    fn update(&mut self, delta: Duration) -> bool {
+        self.time_to_next_spawn.tick(delta);
+        if self.time_to_next_spawn.finished() {
+            self.time_to_next_spawn = ItemSpawnState::random_timer();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn random_timer() -> Timer {
+        let mut rng = rand::thread_rng();
+        Timer::new(
+            Duration::from_millis(rng.gen_range(3000..7000)),
+            TimerMode::Once,
+        )
+    }
+
+    fn random_position() -> Vec3 {
+        let mut rng = rand::thread_rng();
+
+        Vec3::new(
+            rng.gen_range(100.0..1948.0),
+            rng.gen_range(100.0..1948.0),
+            -3.,
+        )
+    }
+}
+
+fn spawn_items(mut commands: Commands, mut spawn_state: ResMut<ItemSpawnState>, time: Res<Time>, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<ColorMaterial>>) {
+    if spawn_state.update(time.delta()) {
+        commands.spawn((
+            Item {},
+            Mesh2d(meshes.add(Circle::default())),
+            MeshMaterial2d(materials.add(Color::from(GREEN))),
+            Transform::default()
+                .with_scale(Vec3::splat(150.))
+                .with_translation(ItemSpawnState::random_position()),
+        ));
+    }
 }
