@@ -253,8 +253,8 @@ fn random_position_and_direction() -> (Vec3, Vec3) {
     let mut rng = rand::thread_rng();
 
     let position = Vec3::new(
-        rng.gen_range(100.0..1948.0),
-        rng.gen_range(100.0..1948.0),
+        rng.gen_range(250.0..1798.0),
+        rng.gen_range(250.0..1798.0),
         0.,
     );
 
@@ -420,7 +420,7 @@ fn game_logic(
             get_all_coordinates_around(pos_before.x, pos_before.y, 10., size);
 
         let player_base_speed = 200.;
-        let modifier = player.speed_mod() as f32 * 0.35 + 1.;
+        let modifier = player.speed_mod() as f32 * 0.5 + 1.;
         let player_speed = player_base_speed * modifier;
         transform.translation += player.dir * time.delta_secs() * player_speed;
 
@@ -503,12 +503,9 @@ struct ItemSpawnState {
 
 impl ItemSpawnState {
     fn new() -> Self {
-        let mut rng = rand::thread_rng();
-        let time_to_next_spawn = Timer::new(
-            Duration::from_millis(rng.gen_range(1000..5000)),
-            TimerMode::Once,
-        );
-        ItemSpawnState { time_to_next_spawn }
+        ItemSpawnState {
+            time_to_next_spawn: ItemSpawnState::random_timer(),
+        }
     }
 
     fn update(&mut self, delta: Duration) -> bool {
@@ -524,7 +521,7 @@ impl ItemSpawnState {
     fn random_timer() -> Timer {
         let mut rng = rand::thread_rng();
         Timer::new(
-            Duration::from_millis(rng.gen_range(3000..7000)),
+            Duration::from_millis(rng.gen_range(5000..15000)),
             TimerMode::Once,
         )
     }
