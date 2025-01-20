@@ -1,53 +1,97 @@
 {
-  description = "Dev shell for Bevy projects with Rust tools";
+  description = "Naersk package and dev shell for Bevy projects";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
+    naersk.url = "github:nix-community/naersk";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs }:
-    let
-      pkgs = import nixpkgs { system = "x86_64-linux"; };
-    in
-    {
-      devShell.x86_64-linux = pkgs.mkShell {
-        nativeBuildInputs = [
-          pkgs.pkg-config
-        ];
+  outputs = { self, flake-utils, nixpkgs, naersk }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = (import nixpkgs) {
+          inherit system;
+        };
 
-        # Define dependencies in a single list
-        buildInputs = with pkgs; [
-          udev
-          alsa-lib
-          vulkan-loader
-          xorg.libX11
-          xorg.libXcursor
-          xorg.libXi
-          xorg.libXrandr
-          libxkbcommon
-          wayland
-          rustc
-          rustfmt
-          cargo
-        ];
+        naersk' = pkgs.callPackage naersk {};
 
-        # Set library paths
-        LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
-          udev
-          alsa-lib
-          vulkan-loader
-          xorg.libX11
-          xorg.libXcursor
-          xorg.libXi
-          xorg.libXrandr
-          libxkbcommon
-          wayland
-        ]);
+      in {
+        # For `nix build` & `nix run`:
+        defaultPackage = naersk'.buildPackage {
+          src = ./.;
+          nativeBuildInputs = with pkgs; [ pkg-config ];
+          buildInputs = with pkgs; [
+            udev
+            alsa-lib
+            vulkan-loader
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXi
+            xorg.libXrandr
+            libxkbcommon
+            wayland
+            rustc
+            rustfmt
+            cargo
+          ];
+          shellHook = ''
+            export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath (with pkgs; [
+              udev
+              alsa-lib
+              vulkan-loader
+              xorg.libX11
+              xorg.libXcursor
+              xorg.libXi
+              xorg.libXrandr
+              libxkbcommon
+              wayland
+            ])}:$LD_LIBRARY_PATH
+          '';
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
+            udev
+            alsa-lib
+            vulkan-loader
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXi
+            xorg.libXrandr
+            libxkbcommon
+            wayland
+          ]);
+        };
 
-        # Optional shell hook for Rust tools
-        shellHook = ''
-          echo "Rust tools (cargo, rustc) and Bevy dependencies are ready to use!"
-        '';
-      };
-    };
+        # For `nix develop`:
+        devShell = pkgs.mkShell {
+          nativeBuildInputs = with pkgs; [ pkg-config ];
+          buildInputs = with pkgs; [
+            udev
+            alsa-lib
+            vulkan-loader
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXi
+            xorg.libXrandr
+            libxkbcommon
+            wayland
+            rustc
+            rustfmt
+            cargo
+          ];
+
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
+            udev
+            alsa-lib
+            vulkan-loader
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXi
+            xorg.libXrandr
+            libxkbcommon
+            wayland
+          ]);
+        };
+
+      }
+    );
 }
