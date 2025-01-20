@@ -82,13 +82,3 @@
       }
     );
 }
-
-#   installPhase = ''
-#     # Create wrapper script in the bin directory
-#     mkdir -p $out/bin
-#     cp target/release/sneakysnakes $out/bin/sneakysnakes
-#     echo '#!/bin/bash' > $out/bin/sneakysnakes_launch
-#     echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${libraryPath}' >> $out/bin/sneakysnakes_launch
-#     echo './sneakysnakes "$@"' >> $out/bin/sneakysnakes_launch
-#     chmod +x $out/bin/sneakysnakes_launch
-#   '';
