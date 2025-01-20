@@ -14,84 +14,81 @@
           inherit system;
         };
 
-        naersk' = pkgs.callPackage naersk {};
+        naersk' = pkgs.callPackage naersk { };
 
-      in {
+        nativeBuildInputs = with pkgs; [ pkg-config ];
+
+        buildInputs = with pkgs; [
+          udev
+          alsa-lib
+          vulkan-loader
+          xorg.libX11
+          xorg.libXcursor
+          xorg.libXi
+          xorg.libXrandr
+          libxkbcommon
+          wayland
+          rustc
+          rustfmt
+          cargo
+        ];
+
+        libraryPath = pkgs.lib.makeLibraryPath (with pkgs; [
+          udev
+          alsa-lib
+          vulkan-loader
+          xorg.libX11
+          xorg.libXcursor
+          xorg.libXi
+          xorg.libXrandr
+          libxkbcommon
+          wayland
+        ]);
+
+      in
+      rec {
         # For `nix build` & `nix run`:
-        defaultPackage = naersk'.buildPackage {
+        sneakysnakes = naersk'.buildPackage {
           src = ./.;
-          nativeBuildInputs = with pkgs; [ pkg-config ];
-          buildInputs = with pkgs; [
-            udev
-            alsa-lib
-            vulkan-loader
-            xorg.libX11
-            xorg.libXcursor
-            xorg.libXi
-            xorg.libXrandr
-            libxkbcommon
-            wayland
-            rustc
-            rustfmt
-            cargo
-          ];
-          shellHook = ''
-            export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath (with pkgs; [
-              udev
-              alsa-lib
-              vulkan-loader
-              xorg.libX11
-              xorg.libXcursor
-              xorg.libXi
-              xorg.libXrandr
-              libxkbcommon
-              wayland
-            ])}:$LD_LIBRARY_PATH
-          '';
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
-            udev
-            alsa-lib
-            vulkan-loader
-            xorg.libX11
-            xorg.libXcursor
-            xorg.libXi
-            xorg.libXrandr
-            libxkbcommon
-            wayland
-          ]);
+          inherit nativeBuildInputs;
+          inherit buildInputs;
+          cargoBuildOptions = x: x ++ [ "--no-default-features" ];
         };
+        sneakysnakes_launch = pkgs.stdenv.mkDerivation {
+          pname = "sneakysnakes_launch";
+          version = "1.0";
+
+          buildInputs = [ sneakysnakes ];
+          src = ./.;
+
+          installPhase = ''
+            mkdir -p $out/bin
+            echo '#!${pkgs.stdenv.shell}' > $out/bin/sneakysnakes_launch
+            echo 'export LD_LIBRARY_PATH=${libraryPath}:$LD_LIBRARY_PATH' >> $out/bin/sneakysnakes_launch
+            echo '${sneakysnakes}/bin/sneakysnakes' >> $out/bin/sneakysnakes_launch
+            chmod +x $out/bin/sneakysnakes_launch
+          '';
+        };
+        defaultPackage = sneakysnakes_launch;
+
 
         # For `nix develop`:
         devShell = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ pkg-config ];
-          buildInputs = with pkgs; [
-            udev
-            alsa-lib
-            vulkan-loader
-            xorg.libX11
-            xorg.libXcursor
-            xorg.libXi
-            xorg.libXrandr
-            libxkbcommon
-            wayland
-            rustc
-            rustfmt
-            cargo
-          ];
+          inherit nativeBuildInputs;
+          inherit buildInputs;
 
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
-            udev
-            alsa-lib
-            vulkan-loader
-            xorg.libX11
-            xorg.libXcursor
-            xorg.libXi
-            xorg.libXrandr
-            libxkbcommon
-            wayland
-          ]);
+          LD_LIBRARY_PATH = libraryPath;
         };
-
       }
     );
 }
+
+#   installPhase = ''
+#     # Create wrapper script in the bin directory
+#     mkdir -p $out/bin
+#     cp target/release/sneakysnakes $out/bin/sneakysnakes
+#     echo '#!/bin/bash' > $out/bin/sneakysnakes_launch
+#     echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${libraryPath}' >> $out/bin/sneakysnakes_launch
+#     echo './sneakysnakes "$@"' >> $out/bin/sneakysnakes_launch
+#     chmod +x $out/bin/sneakysnakes_launch
+#   '';
