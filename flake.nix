@@ -48,28 +48,28 @@
       in
       rec {
         # For `nix build` & `nix run`:
-        sneakysnakes = naersk'.buildPackage {
+        sneakysnakes_bevy = naersk'.buildPackage {
           src = ./.;
           inherit nativeBuildInputs;
           inherit buildInputs;
           cargoBuildOptions = x: x ++ [ "--no-default-features" ];
         };
-        sneakysnakes_launch = pkgs.stdenv.mkDerivation {
-          pname = "sneakysnakes_launch";
+        sneakysnakes = pkgs.stdenv.mkDerivation {
+          pname = "sneakysnakes";
           version = "1.0";
 
-          buildInputs = [ sneakysnakes ];
+          buildInputs = [ sneakysnakes_bevy ];
           src = ./.;
 
           installPhase = ''
             mkdir -p $out/bin
-            echo '#!${pkgs.stdenv.shell}' > $out/bin/sneakysnakes_launch
-            echo 'export LD_LIBRARY_PATH=${libraryPath}:$LD_LIBRARY_PATH' >> $out/bin/sneakysnakes_launch
-            echo '${sneakysnakes}/bin/sneakysnakes' >> $out/bin/sneakysnakes_launch
-            chmod +x $out/bin/sneakysnakes_launch
+            echo '#!${pkgs.stdenv.shell}' > $out/bin/sneakysnakes
+            echo 'export LD_LIBRARY_PATH=${libraryPath}:$LD_LIBRARY_PATH' >> $out/bin/sneakysnakes
+            echo '${sneakysnakes_bevy}/bin/sneakysnakes' >> $out/bin/sneakysnakes
+            chmod +x $out/bin/sneakysnakes
           '';
         };
-        defaultPackage = sneakysnakes_launch;
+        defaultPackage = sneakysnakes;
 
 
         # For `nix develop`:
