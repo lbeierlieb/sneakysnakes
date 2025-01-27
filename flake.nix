@@ -16,7 +16,7 @@
 
         naersk' = pkgs.callPackage naersk { };
 
-        nativeBuildInputs = with pkgs; [ 
+        nativeBuildInputs = with pkgs; [
           pkg-config
           rustc
           rustfmt
