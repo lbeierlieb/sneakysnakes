@@ -320,12 +320,14 @@ fn cleanup_in_game(
     mut commands: Commands,
     query: Query<Entity, Or<(With<Camera>, With<Mesh2d>, With<Sprite>)>>,
     mut images: ResMut<Assets<Image>>,
-    trail_texture: Res<TrailTexture>,
+    trail_texture: Option<Res<TrailTexture>>,
 ) {
     for entity in &query {
         commands.entity(entity).despawn();
     }
-    images.remove(&trail_texture.image_handle);
+    if let Some(trail_texture) = trail_texture {
+        images.remove(&trail_texture.image_handle);
+    }
 }
 
 #[derive(Component)]
