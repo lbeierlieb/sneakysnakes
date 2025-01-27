@@ -16,7 +16,12 @@
 
         naersk' = pkgs.callPackage naersk { };
 
-        nativeBuildInputs = with pkgs; [ pkg-config ];
+        nativeBuildInputs = with pkgs; [ 
+          pkg-config
+          rustc
+          rustfmt
+          cargo
+        ];
 
         buildInputs = with pkgs; [
           udev
@@ -28,23 +33,9 @@
           xorg.libXrandr
           libxkbcommon
           wayland
-          rustc
-          rustfmt
-          cargo
         ];
 
-        libraryPath = pkgs.lib.makeLibraryPath (with pkgs; [
-          udev
-          alsa-lib
-          vulkan-loader
-          xorg.libX11
-          xorg.libXcursor
-          xorg.libXi
-          xorg.libXrandr
-          libxkbcommon
-          wayland
-        ]);
-
+        libraryPath = pkgs.lib.makeLibraryPath buildInputs;
       in
       rec {
         # For `nix build` & `nix run`:
