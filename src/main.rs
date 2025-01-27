@@ -39,7 +39,7 @@ fn main() {
         }))
         .insert_state::<AppState>(AppState::MainMenu)
         .insert_resource(GameSettings::default())
-        .add_systems(OnEnter(AppState::MainMenu), cleanup_in_game)
+        //.add_systems(OnEnter(AppState::MainMenu), cleanup_in_game)
         .add_systems(
             OnEnter(AppState::MainMenu),
             setup_main_menu.after(cleanup_in_game),
