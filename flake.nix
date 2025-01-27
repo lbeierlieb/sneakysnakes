@@ -21,6 +21,9 @@
           rustc
           rustfmt
           cargo
+          llvmPackages.lld
+          wasm-bindgen-cli
+          binaryen
         ];
 
         buildInputs = with pkgs; [
@@ -62,13 +65,48 @@
         };
         defaultPackage = sneakysnakes;
 
-
         # For `nix develop`:
         devShell = pkgs.mkShell {
           inherit nativeBuildInputs;
           inherit buildInputs;
 
           LD_LIBRARY_PATH = libraryPath;
+        };
+
+        # WASM
+        sneakysnakes_wasm = naersk'.buildPackage {
+          src = ./.;
+          inherit nativeBuildInputs;
+          inherit buildInputs;
+          cargoBuildOptions = x: x ++ [
+            "--no-default-features"
+            "--target wasm32-unknown-unknown"
+          ];
+        };
+        sneakysnakes-wasm = pkgs.stdenv.mkDerivation {
+          pname = "sneakysnakes-wasm";
+          version = "1.0";
+
+          inherit nativeBuildInputs buildInputs;
+
+          src = ./.;
+
+          buildPhase = ''
+            wasm-bindgen --out-dir wasm-app --target web ${sneakysnakes_wasm}/bin/sneakysnakes.wasm
+            wasm-opt -O3 wasm-app/sneakysnakes_bg.wasm -o wasm-app/sneakysnakes_bg.wasm
+          '';
+
+          installPhase = ''
+            mkdir $out
+            cp -r wasm-app $out/wasm
+            cp wasm/index.html $out/wasm
+            mkdir $out/bin
+            cat > $out/bin/sneakysnakes-wasm <<EOF
+            #!/usr/bin/env bash
+            ${pkgs.python3}/bin/python -m http.server -d $out/wasm 8000
+            EOF
+            chmod +x $out/bin/sneakysnakes-wasm
+          '';
         };
       }
     );
