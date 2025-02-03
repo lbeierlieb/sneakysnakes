@@ -268,14 +268,10 @@ fn move_players_a_bit(
 
     for (transform, player) in &query {
         let mut pos = transform.translation;
-        for _ in 0..5 {
-            let coords = get_all_coordinates_around(pos.x, pos.y, 2.5, size);
+        for _ in 0..1 {
+            let pos_before = pos - player.dir * 10.;
 
-            let pos_before = pos - player.dir * 1.25;
-
-            let coords_before = get_all_coordinates_around(pos_before.x, pos_before.y, 2.5, size);
-
-            let coords_to_draw = coords_before.difference(&coords).collect::<HashSet<_>>();
+            let coords_to_draw = get_draw_points(pos_before, player.dir, pos, player.dir);
 
             for (x, y) in coords_to_draw {
                 let index = (y * size + x) * 4; // RGBA
@@ -459,6 +455,7 @@ fn game_logic(
             continue;
         }
 
+        let dir_before = player.dir;
         let (left_key, right_key) = player.steer_keys;
         if keyboard_input.pressed(left_key) {
             let rotation = Quat::from_rotation_z(std::f32::consts::PI / 60.0);
@@ -476,22 +473,16 @@ fn game_logic(
         let size = texture.size().x as usize;
 
         let pos_before = transform.translation;
-        let coords_before_update =
-            get_all_coordinates_around(pos_before.x, pos_before.y, 2.5, size);
 
         let player_base_speed = 50.;
         let modifier = player.speed_mod() as f32 * 0.5 + 1.;
         let player_speed = player_base_speed * modifier;
         transform.translation += player.dir * time.delta_secs() * player_speed;
 
-        let pos_after = transform.translation;
-        let coords_after_update = get_all_coordinates_around(pos_after.x, pos_after.y, 2.5, size);
-
         player.gap_state.update(time.delta());
         if !player.gap_state.gapping {
-            let coords_to_draw = coords_before_update
-                .difference(&coords_after_update)
-                .collect::<HashSet<_>>();
+            let coords_to_draw =
+                get_draw_points(pos_before, dir_before, transform.translation, player.dir);
 
             for (x, y) in coords_to_draw {
                 let index = (y * size + x) * 4; // RGBA
@@ -505,17 +496,60 @@ fn game_logic(
             }
         }
 
-        for (x, y) in coords_after_update {
-            let index = (y * size + x) * 4; // RGBA
-            let alpha = texture.data[index + 3];
-            if alpha != 0 {
+        for vec in get_collision_points(transform.translation, player.dir) {
+            if let Some((x, y)) = try_vec_to_coord(vec, size) {
+                let index = (y * size + x) * 4; // RGBA
+                let alpha = texture.data[index + 3];
+                if alpha != 0 {
+                    // something was hit
+                    player.alive = false;
+                }
+            } else {
+                // player is out of bounds
                 player.alive = false;
             }
         }
+    }
+}
 
-        if is_player_out_of_bounds(pos_after.x, pos_after.y, 2.5, size) {
-            player.alive = false;
-        }
+fn get_collision_points(translation: Vec3, dir: Vec3) -> Vec<Vec3> {
+    let rotation_left = Quat::from_rotation_z(std::f32::consts::PI / 3.);
+    let rotation_right = Quat::from_rotation_z(-std::f32::consts::PI / 3.);
+    let front = translation + 2.5 * dir;
+    let left = translation + 2.5 * rotation_left.mul_vec3(dir);
+    let right = translation + 2.5 * rotation_right.mul_vec3(dir);
+    vec![front, left, right]
+}
+
+fn get_draw_points(
+    translation_before: Vec3,
+    dir_before: Vec3,
+    translation_now: Vec3,
+    dir_now: Vec3,
+) -> HashSet<(usize, usize)> {
+    let rotation_90deg = Quat::from_rotation_z(std::f32::consts::PI / 2.);
+
+    let dir_rot_before = rotation_90deg.mul_vec3(dir_before);
+    let left_before = translation_before + 2.5 * dir_rot_before;
+    let right_before = translation_before - 2.5 * dir_rot_before;
+
+    let dir_rot_now = rotation_90deg.mul_vec3(dir_now);
+    let left_now = translation_now + 2.5 * dir_rot_now;
+    let right_now = translation_now - 2.5 * dir_rot_now;
+
+    let quad = [left_now, right_now, left_before, right_before];
+    get_all_coordinates_in_quad(quad)
+}
+
+fn try_vec_to_coord(vec: Vec3, size: usize) -> Option<(usize, usize)> {
+    let x = vec.x.round() as isize;
+    let y = vec.y.round() as isize;
+    let size = size as isize;
+
+    if x < 0 || x >= size || y < 0 || y >= size {
+        None
+    } else {
+        Some((x as usize, y as usize))
     }
 }
 
@@ -534,26 +568,54 @@ fn check_round_over(mut commands: Commands, query: Query<&Player>) {
     }
 }
 
-fn get_all_coordinates_around(x: f32, y: f32, r: f32, size: usize) -> HashSet<(usize, usize)> {
-    let ux = x as usize;
-    let uy = y as usize;
-    let ur = r as usize;
+fn get_all_coordinates_in_quad(quad: [Vec3; 4]) -> HashSet<(usize, usize)> {
+    let x_min = quad.iter().map(|v| v.x as usize).min().unwrap();
+    let y_min = quad.iter().map(|v| v.y as usize).min().unwrap();
+    let x_max = quad.iter().map(|v| v.x as usize).max().unwrap();
+    let y_max = quad.iter().map(|v| v.y as usize).max().unwrap();
 
-    let start_x = ux.saturating_sub(ur + 1).clamp(0, size - 1);
-    let end_x = (ux + ur + 1).clamp(0, size - 1);
+    let mut points = HashSet::new();
 
-    let start_y = uy.saturating_sub(ur + 1).clamp(0, size - 1);
-    let end_y = (uy + ur + 1).clamp(0, size - 1);
+    for x in x_min..=x_max {
+        for y in y_min..=y_max {
+            let vec = Vec3::new(x as f32, y as f32, 0.);
+            if is_point_inside_of_quad(vec, quad) {
+                points.insert((x, y));
+            }
+        }
+    }
 
-    (start_x..end_x)
-        .flat_map(|x| (start_y..end_y).map(move |y| (x, y)))
-        .filter(|&(px, py)| Vec2::new(px as f32, py as f32).distance(Vec2::new(x, y)) <= r)
-        .collect()
+    points
 }
 
-fn is_player_out_of_bounds(x: f32, y: f32, r: f32, size: usize) -> bool {
-    let size = size as f32;
-    x < r || x > size - r || y < r || y > size - r
+fn is_point_inside_of_quad(p: Vec3, quad: [Vec3; 4]) -> bool {
+    let tria0 = [quad[0], quad[1], quad[2]];
+    let tria1 = [quad[1], quad[2], quad[3]];
+
+    is_point_inside_of_triangle(p, tria0) || is_point_inside_of_triangle(p, tria1)
+}
+
+fn is_point_inside_of_triangle(p: Vec3, mut triangle: [Vec3; 3]) -> bool {
+    let area = triangle_area(triangle);
+    let mut parts_area = 0.0;
+    for i in 0..triangle.len() {
+        let replaced = triangle[i];
+        triangle[i] = p;
+        parts_area += triangle_area(triangle);
+        triangle[i] = replaced;
+    }
+
+    parts_area - area <= 0.1
+}
+
+fn triangle_area(triangle: [Vec3; 3]) -> f32 {
+    0.5 * (triangle[0].x * triangle[1].y
+        + triangle[1].x * triangle[2].y
+        + triangle[2].x * triangle[0].y
+        - triangle[0].y * triangle[1].x
+        - triangle[1].y * triangle[2].x
+        - triangle[2].y * triangle[0].x)
+        .abs()
 }
 
 #[derive(Resource)]
