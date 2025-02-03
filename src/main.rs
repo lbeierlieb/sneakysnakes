@@ -1,6 +1,9 @@
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::{color::palettes::basic::*, prelude::*};
+use iyes_perf_ui::entries::PerfUiFramerateEntries;
+use iyes_perf_ui::prelude::*;
 use rand::Rng;
 use std::collections::HashSet;
 use std::time::Duration;
@@ -37,6 +40,8 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugins(FrameTimeDiagnosticsPlugin)
+        .add_plugins(PerfUiPlugin)
         .insert_state::<AppState>(AppState::MainMenu)
         .insert_resource(GameSettings::default())
         .add_systems(OnEnter(AppState::MainMenu), cleanup_in_game)
@@ -94,6 +99,11 @@ fn main() {
 fn setup_main_menu(mut commands: Commands) {
     commands.spawn(Camera2d);
     commands.spawn((Text2d::new("Press space to start"),));
+    commands.spawn((
+        PerfUiRoot::default(),
+        // Contains everything related to FPS and frame time
+        PerfUiFramerateEntries::default(),
+    ));
 }
 
 fn cleanup_main_menu(
