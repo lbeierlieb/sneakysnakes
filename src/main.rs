@@ -152,9 +152,9 @@ fn setup_round_over(mut commands: Commands, query: Query<&Player>) {
     };
     commands.spawn((
         Text2d::new(text),
-        Transform::from_translation(Vec3::new(1024., 1024., 2.)),
+        Transform::from_translation(Vec3::new(256., 256., 2.)),
         TextFont {
-            font_size: 130.0,
+            font_size: 20.0,
             ..default()
         },
     ));
@@ -191,7 +191,7 @@ fn setup_in_game(
     settings: Res<GameSettings>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    let size = 2048;
+    let size = 512;
     let texture = Image::new_fill(
         Extent3d {
             width: size,
@@ -210,7 +210,7 @@ fn setup_in_game(
             ..Default::default()
         },
         Transform {
-            translation: Vec3::new(1024.0, 1024.0, -2.0), // Position in the middle of the camera's view
+            translation: Vec3::new(256.0, 256.0, -2.0), // Position in the middle of the camera's view
             scale: Vec3::new(1., -1., 1.),
             ..Default::default()
         },
@@ -221,8 +221,7 @@ fn setup_in_game(
 
     commands.spawn((
         Camera2d,
-        Transform::from_translation(Vec3::new(1024.0, 1024.0, 0.0))
-            .with_scale(Vec3::new(4., 4., 1.)),
+        Transform::from_translation(Vec3::new(256.0, 256.0, 0.0)).with_scale(Vec3::new(1., 1., 1.)),
     ));
     if settings.number_of_players >= 1 {
         spawn_player(
@@ -270,11 +269,11 @@ fn move_players_a_bit(
     for (transform, player) in &query {
         let mut pos = transform.translation;
         for _ in 0..5 {
-            let coords = get_all_coordinates_around(pos.x, pos.y, 10., size);
+            let coords = get_all_coordinates_around(pos.x, pos.y, 2.5, size);
 
-            let pos_before = pos - player.dir * 5.;
+            let pos_before = pos - player.dir * 1.25;
 
-            let coords_before = get_all_coordinates_around(pos_before.x, pos_before.y, 10., size);
+            let coords_before = get_all_coordinates_around(pos_before.x, pos_before.y, 2.5, size);
 
             let coords_to_draw = coords_before.difference(&coords).collect::<HashSet<_>>();
 
@@ -307,7 +306,7 @@ fn spawn_player(
         Mesh2d(meshes.add(Circle::default())),
         MeshMaterial2d(materials.add(Color::from(YELLOW))),
         Transform::default()
-            .with_scale(Vec3::splat(20.))
+            .with_scale(Vec3::splat(5.))
             .with_translation(position),
     ));
 }
@@ -315,11 +314,7 @@ fn spawn_player(
 fn random_position_and_direction() -> (Vec3, Vec3) {
     let mut rng = rand::thread_rng();
 
-    let position = Vec3::new(
-        rng.gen_range(250.0..1798.0),
-        rng.gen_range(250.0..1798.0),
-        0.,
-    );
+    let position = Vec3::new(rng.gen_range(50.0..450.0), rng.gen_range(50.0..450.0), 0.);
 
     let direction = Vec3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), 0.).normalize();
 
@@ -482,15 +477,15 @@ fn game_logic(
 
         let pos_before = transform.translation;
         let coords_before_update =
-            get_all_coordinates_around(pos_before.x, pos_before.y, 10., size);
+            get_all_coordinates_around(pos_before.x, pos_before.y, 2.5, size);
 
-        let player_base_speed = 200.;
+        let player_base_speed = 50.;
         let modifier = player.speed_mod() as f32 * 0.5 + 1.;
         let player_speed = player_base_speed * modifier;
         transform.translation += player.dir * time.delta_secs() * player_speed;
 
         let pos_after = transform.translation;
-        let coords_after_update = get_all_coordinates_around(pos_after.x, pos_after.y, 10., size);
+        let coords_after_update = get_all_coordinates_around(pos_after.x, pos_after.y, 2.5, size);
 
         player.gap_state.update(time.delta());
         if !player.gap_state.gapping {
@@ -518,7 +513,7 @@ fn game_logic(
             }
         }
 
-        if is_player_out_of_bounds(pos_after.x, pos_after.y, 10., size) {
+        if is_player_out_of_bounds(pos_after.x, pos_after.y, 2.5, size) {
             player.alive = false;
         }
     }
@@ -594,11 +589,7 @@ impl ItemSpawnState {
     fn random_position() -> Vec3 {
         let mut rng = rand::thread_rng();
 
-        Vec3::new(
-            rng.gen_range(100.0..1948.0),
-            rng.gen_range(100.0..1948.0),
-            -3.,
-        )
+        Vec3::new(rng.gen_range(50.0..450.0), rng.gen_range(50.0..450.0), -3.)
     }
 }
 
@@ -652,7 +643,7 @@ fn spawn_items(
             parent.spawn((
                 Text2d::new(effect.get_text()),
                 TextFont {
-                    font_size: 50.0,
+                    font_size: 15.0,
                     ..default()
                 },
                 Transform::from_translation(Vec3::new(0., 0., 0.2)),
@@ -660,7 +651,7 @@ fn spawn_items(
             parent.spawn((
                 Mesh2d(meshes.add(Circle::default())),
                 MeshMaterial2d(materials.add(Color::from(GREEN))),
-                Transform::from_translation(Vec3::new(0., 0., 0.1)).with_scale(Vec3::splat(150.)),
+                Transform::from_translation(Vec3::new(0., 0., 0.1)).with_scale(Vec3::splat(40.)),
             ));
         });
     }
@@ -685,7 +676,7 @@ fn item_collection(
             let item_translation = item_transform.translation;
             let item_xy = Vec2::new(item_translation.x, item_translation.y);
 
-            if player_xy.distance(item_xy) <= 85. {
+            if player_xy.distance(item_xy) <= 22.5 {
                 player.add_effect(item.effect);
                 commands.entity(entity).despawn_recursive();
             }
