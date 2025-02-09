@@ -1,5 +1,6 @@
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
+use bevy::window::WindowResized;
 use bevy::{color::palettes::basic::*, prelude::*};
 use rand::Rng;
 use std::collections::HashSet;
@@ -26,19 +27,47 @@ impl Default for GameSettings {
     }
 }
 
+#[derive(Resource)]
+struct WindowSize {
+    width: f32,
+    height: f32,
+}
+
+impl Default for WindowSize {
+    fn default() -> Self {
+        WindowSize {
+            width: 512.,
+            height: 512.,
+        }
+    }
+}
+
+impl WindowSize {
+    fn get_smallest_dimension(&self) -> f32 {
+        if self.width < self.height {
+            self.width
+        } else {
+            self.height
+        }
+    }
+}
+
 fn main() {
+    let window_size = WindowSize::default();
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                resolution: (512.0, 512.0).into(), // Fixed width and height
+                resolution: (window_size.width, window_size.height).into(),
                 title: "Fixed 2D Screen".to_string(),
-                resizable: false, // Disable resizing
+                resizable: true,
                 ..default()
             }),
             ..default()
         }))
         .insert_state::<AppState>(AppState::MainMenu)
         .insert_resource(GameSettings::default())
+        .insert_resource(window_size)
+        .add_systems(Update, on_resize_system)
         .add_systems(OnEnter(AppState::MainMenu), cleanup_in_game)
         .add_systems(
             OnEnter(AppState::MainMenu),
@@ -154,6 +183,16 @@ fn setup_round_over(mut commands: Commands, query: Query<&Player>) {
     ));
 }
 
+fn on_resize_system(
+    mut resize_reader: EventReader<WindowResized>,
+    mut window_size: ResMut<WindowSize>,
+) {
+    for e in resize_reader.read() {
+        window_size.width = e.width;
+        window_size.height = e.height;
+    }
+}
+
 fn update_round_start(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         commands.set_state(AppState::RoundActive);
@@ -184,16 +223,18 @@ fn setup_in_game(
     mut materials: ResMut<Assets<ColorMaterial>>,
     settings: Res<GameSettings>,
     mut images: ResMut<Assets<Image>>,
+    window_size: Res<WindowSize>,
 ) {
-    let size = 512;
+    let smallest_dim = window_size.get_smallest_dimension();
+    let texture_size = smallest_dim as u32;
     let texture = Image::new_fill(
         Extent3d {
-            width: size,
-            height: size,
+            width: texture_size,
+            height: texture_size,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
-        &vec![0x00; (size * size * 4) as usize],
+        &vec![0x00; (texture_size * texture_size * 4) as usize],
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
     );
@@ -205,7 +246,7 @@ fn setup_in_game(
         },
         Transform {
             translation: Vec3::new(0.0, 0.0, -2.0), // Position in the middle of the camera's view
-            scale: Vec3::new(2. / size as f32, 2. / size as f32, 1.),
+            scale: Vec3::new(2. / texture_size as f32, 2. / texture_size as f32, 1.),
             ..Default::default()
         },
     ));
@@ -216,8 +257,8 @@ fn setup_in_game(
     commands.spawn((
         Camera2d,
         Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)).with_scale(Vec3::new(
-            2. / 512 as f32,
-            2. / 512 as f32,
+            2. / smallest_dim,
+            2. / smallest_dim,
             1.,
         )),
     ));
