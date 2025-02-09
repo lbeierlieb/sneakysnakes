@@ -142,9 +142,13 @@ fn setup_round_over(mut commands: Commands, query: Query<&Player>) {
     };
     commands.spawn((
         Text2d::new(text),
-        Transform::from_translation(Vec3::new(256., 256., 2.)),
+        Transform::from_translation(Vec3::new(0., 0., 2.)).with_scale(Vec3::new(
+            1. / 512.,
+            1. / 512.,
+            1.,
+        )),
         TextFont {
-            font_size: 20.0,
+            font_size: 40.0,
             ..default()
         },
     ));
@@ -189,7 +193,7 @@ fn setup_in_game(
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
-        &vec![0; (size * size * 4) as usize],
+        &vec![0x00; (size * size * 4) as usize],
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
     );
@@ -200,8 +204,8 @@ fn setup_in_game(
             ..Default::default()
         },
         Transform {
-            translation: Vec3::new(256.0, 256.0, -2.0), // Position in the middle of the camera's view
-            scale: Vec3::new(1., -1., 1.),
+            translation: Vec3::new(0.0, 0.0, -2.0), // Position in the middle of the camera's view
+            scale: Vec3::new(2. / size as f32, 2. / size as f32, 1.),
             ..Default::default()
         },
     ));
@@ -211,7 +215,11 @@ fn setup_in_game(
 
     commands.spawn((
         Camera2d,
-        Transform::from_translation(Vec3::new(256.0, 256.0, 0.0)).with_scale(Vec3::new(1., 1., 1.)),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)).with_scale(Vec3::new(
+            2. / 512 as f32,
+            2. / 512 as f32,
+            1.,
+        )),
     ));
     if settings.number_of_players >= 1 {
         spawn_player(
@@ -254,27 +262,19 @@ fn move_players_a_bit(
 ) {
     let texture_handle = &trail_texture.image_handle;
     let texture = images.get_mut(texture_handle).unwrap();
-    let size = texture.size().x as usize;
 
     for (transform, player) in &query {
-        let mut pos = transform.translation;
-        for _ in 0..1 {
-            let pos_before = pos - player.dir * 10.;
+        let pos = transform.translation;
+        let pos_before = pos - player.dir * 10. / 256.;
 
-            let coords_to_draw = get_draw_points(pos_before, player.dir, pos, player.dir);
-
-            for (x, y) in coords_to_draw {
-                let index = (y * size + x) * 4; // RGBA
-                let color = player.color.to_srgba();
-                texture.data[index..index + 4].copy_from_slice(&[
-                    (color.red * 255.) as u8,
-                    (color.green * 255.) as u8,
-                    (color.blue * 255.) as u8,
-                    (color.alpha * 255.) as u8,
-                ]);
-            }
-            pos = pos_before;
-        }
+        draw_trail(
+            pos_before,
+            player.dir,
+            pos,
+            player.dir,
+            texture,
+            player.color,
+        );
     }
 }
 
@@ -292,7 +292,7 @@ fn spawn_player(
         Mesh2d(meshes.add(Circle::default())),
         MeshMaterial2d(materials.add(Color::from(YELLOW))),
         Transform::default()
-            .with_scale(Vec3::splat(5.))
+            .with_scale(Vec3::splat(5. / 256.))
             .with_translation(position),
     ));
 }
@@ -300,7 +300,7 @@ fn spawn_player(
 fn random_position_and_direction() -> (Vec3, Vec3) {
     let mut rng = rand::thread_rng();
 
-    let position = Vec3::new(rng.gen_range(50.0..450.0), rng.gen_range(50.0..450.0), 0.);
+    let position = Vec3::new(rng.gen_range(-0.8..0.8), rng.gen_range(-0.8..0.8), 0.);
 
     let direction = Vec3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), 0.).normalize();
 
@@ -459,35 +459,18 @@ fn game_logic(
         let texture_handle = &trail_texture.image_handle;
         let texture = images.get_mut(texture_handle).unwrap();
 
-        // Map the world position to texture space
+        // Map the worjd position to texture space
         let size = texture.size().x as usize;
 
         let pos_before = transform.translation;
 
-        let player_base_speed = 50.;
+        let player_base_speed = 50. / 256.;
         let modifier = player.speed_mod() as f32 * 0.5 + 1.;
         let player_speed = player_base_speed * modifier;
         transform.translation += player.dir * time.delta_secs() * player_speed;
 
-        player.gap_state.update(time.delta());
-        if !player.gap_state.gapping {
-            let coords_to_draw =
-                get_draw_points(pos_before, dir_before, transform.translation, player.dir);
-
-            for (x, y) in coords_to_draw {
-                let index = (y * size + x) * 4; // RGBA
-                let color = player.color.to_srgba();
-                texture.data[index..index + 4].copy_from_slice(&[
-                    (color.red * 255.) as u8,
-                    (color.green * 255.) as u8,
-                    (color.blue * 255.) as u8,
-                    (color.alpha * 255.) as u8,
-                ]);
-            }
-        }
-
         for vec in get_collision_points(transform.translation, player.dir) {
-            if let Some((x, y)) = try_vec_to_coord(vec, size) {
+            if let Some((x, y)) = game_to_texture_coord(vec, size) {
                 let index = (y * size + x) * 4; // RGBA
                 let alpha = texture.data[index + 3];
                 if alpha != 0 {
@@ -499,47 +482,85 @@ fn game_logic(
                 player.alive = false;
             }
         }
+
+        player.gap_state.update(time.delta());
+        if !player.gap_state.gapping {
+            draw_trail(
+                pos_before,
+                dir_before,
+                transform.translation,
+                player.dir,
+                texture,
+                player.color,
+            );
+        }
     }
+}
+
+fn game_to_texture_vec(game_coord: Vec3, texture_size: usize) -> Vec3 {
+    let x = (game_coord.x + 1.0) * texture_size as f32 / 2.0;
+    let y = (game_coord.y - 1.0) * texture_size as f32 / -2.0;
+
+    Vec3::new(x, y, game_coord.z)
+}
+
+fn game_to_texture_coord(game_coord: Vec3, texture_size: usize) -> Option<(usize, usize)> {
+    let mapped_vec = game_to_texture_vec(game_coord, texture_size);
+    let ix = mapped_vec.x as isize;
+    let iy = mapped_vec.y as isize;
+
+    if ix < 0 || ix >= texture_size as isize || iy < 0 || iy >= texture_size as isize {
+        return None;
+    }
+
+    Some((ix as usize, iy as usize))
 }
 
 fn get_collision_points(translation: Vec3, dir: Vec3) -> Vec<Vec3> {
     let rotation_left = Quat::from_rotation_z(std::f32::consts::PI / 3.);
     let rotation_right = Quat::from_rotation_z(-std::f32::consts::PI / 3.);
-    let front = translation + 2.5 * dir;
-    let left = translation + 2.5 * rotation_left.mul_vec3(dir);
-    let right = translation + 2.5 * rotation_right.mul_vec3(dir);
+    let front = translation + 2.5 / 256.0 * dir;
+    let left = translation + 2.5 / 256.0 * rotation_left.mul_vec3(dir);
+    let right = translation + 2.5 / 256.0 * rotation_right.mul_vec3(dir);
     vec![front, left, right]
 }
 
-fn get_draw_points(
+fn draw_trail(
     translation_before: Vec3,
     dir_before: Vec3,
     translation_now: Vec3,
     dir_now: Vec3,
-) -> HashSet<(usize, usize)> {
+    texture: &mut Image,
+    color: Color,
+) {
+    let size = texture.size().x as usize;
     let rotation_90deg = Quat::from_rotation_z(std::f32::consts::PI / 2.);
 
     let dir_rot_before = rotation_90deg.mul_vec3(dir_before);
-    let left_before = translation_before + 2.5 * dir_rot_before;
-    let right_before = translation_before - 2.5 * dir_rot_before;
+    let left_before = translation_before + 2.5 / 256. * dir_rot_before;
+    let right_before = translation_before - 2.5 / 256. * dir_rot_before;
 
     let dir_rot_now = rotation_90deg.mul_vec3(dir_now);
-    let left_now = translation_now + 2.5 * dir_rot_now;
-    let right_now = translation_now - 2.5 * dir_rot_now;
+    let left_now = translation_now + 2.5 / 256. * dir_rot_now;
+    let right_now = translation_now - 2.5 / 256. * dir_rot_now;
 
-    let quad = [left_now, right_now, left_before, right_before];
-    get_all_coordinates_in_quad(quad)
-}
+    let quad = [
+        game_to_texture_vec(left_now, size),
+        game_to_texture_vec(right_now, size),
+        game_to_texture_vec(left_before, size),
+        game_to_texture_vec(right_before, size),
+    ];
 
-fn try_vec_to_coord(vec: Vec3, size: usize) -> Option<(usize, usize)> {
-    let x = vec.x.round() as isize;
-    let y = vec.y.round() as isize;
-    let size = size as isize;
-
-    if x < 0 || x >= size || y < 0 || y >= size {
-        None
-    } else {
-        Some((x as usize, y as usize))
+    let coords_to_draw = get_all_coordinates_in_quad(quad);
+    for (x, y) in coords_to_draw {
+        let index = (y * size + x) * 4; // RGBA
+        let color = color.to_srgba();
+        texture.data[index..index + 4].copy_from_slice(&[
+            (color.red * 255.) as u8,
+            (color.green * 255.) as u8,
+            (color.blue * 255.) as u8,
+            (color.alpha * 255.) as u8,
+        ]);
     }
 }
 
@@ -595,7 +616,7 @@ fn is_point_inside_of_triangle(p: Vec3, mut triangle: [Vec3; 3]) -> bool {
         triangle[i] = replaced;
     }
 
-    parts_area - area <= 0.1
+    parts_area / area < 1.05
 }
 
 fn triangle_area(triangle: [Vec3; 3]) -> f32 {
@@ -641,7 +662,7 @@ impl ItemSpawnState {
     fn random_position() -> Vec3 {
         let mut rng = rand::thread_rng();
 
-        Vec3::new(rng.gen_range(50.0..450.0), rng.gen_range(50.0..450.0), -3.)
+        Vec3::new(rng.gen_range(-0.8..0.8), rng.gen_range(-0.8..0.8), -3.)
     }
 }
 
@@ -684,10 +705,10 @@ fn spawn_items(
             .spawn((
                 Item { effect },
                 Mesh2d(meshes.add(Circle::default())),
-                MeshMaterial2d(materials.add(Color::from(GREEN))),
+                MeshMaterial2d(materials.add(Color::srgba(0., 0., 0., 0.))),
                 Transform::default()
-                    .with_scale(Vec3::splat(1.))
-                    .with_translation(ItemSpawnState::random_position()),
+                    .with_translation(ItemSpawnState::random_position())
+                    .with_scale(Vec3::splat(1.)),
             ))
             .id();
 
@@ -698,12 +719,14 @@ fn spawn_items(
                     font_size: 15.0,
                     ..default()
                 },
-                Transform::from_translation(Vec3::new(0., 0., 0.2)),
+                Transform::from_translation(Vec3::new(0., 0., 0.2))
+                    .with_scale(Vec3::splat(1. / 256.)),
             ));
             parent.spawn((
                 Mesh2d(meshes.add(Circle::default())),
                 MeshMaterial2d(materials.add(Color::from(GREEN))),
-                Transform::from_translation(Vec3::new(0., 0., 0.1)).with_scale(Vec3::splat(40.)),
+                Transform::from_translation(Vec3::new(0., 0., 0.1))
+                    .with_scale(Vec3::splat(40. / 256.)),
             ));
         });
     }
@@ -728,7 +751,7 @@ fn item_collection(
             let item_translation = item_transform.translation;
             let item_xy = Vec2::new(item_translation.x, item_translation.y);
 
-            if player_xy.distance(item_xy) <= 22.5 {
+            if player_xy.distance(item_xy) <= 22.5 / 256. {
                 player.add_effect(item.effect);
                 commands.entity(entity).despawn_recursive();
             }
