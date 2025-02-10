@@ -1,5 +1,6 @@
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
+use bevy::window::WindowResized;
 use bevy::{color::palettes::basic::*, prelude::*};
 use rand::Rng;
 use std::collections::HashSet;
@@ -26,19 +27,47 @@ impl Default for GameSettings {
     }
 }
 
+#[derive(Resource)]
+struct WindowSize {
+    width: f32,
+    height: f32,
+}
+
+impl Default for WindowSize {
+    fn default() -> Self {
+        WindowSize {
+            width: 512.,
+            height: 512.,
+        }
+    }
+}
+
+impl WindowSize {
+    fn get_smallest_dimension(&self) -> f32 {
+        if self.width < self.height {
+            self.width
+        } else {
+            self.height
+        }
+    }
+}
+
 fn main() {
+    let window_size = WindowSize::default();
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                resolution: (512.0, 512.0).into(), // Fixed width and height
+                resolution: (window_size.width, window_size.height).into(),
                 title: "Fixed 2D Screen".to_string(),
-                resizable: false, // Disable resizing
+                resizable: true,
                 ..default()
             }),
             ..default()
         }))
         .insert_state::<AppState>(AppState::MainMenu)
         .insert_resource(GameSettings::default())
+        .insert_resource(window_size)
+        .add_systems(Update, on_resize_system)
         .add_systems(OnEnter(AppState::MainMenu), cleanup_in_game)
         .add_systems(
             OnEnter(AppState::MainMenu),
@@ -92,14 +121,21 @@ fn main() {
 }
 
 fn setup_main_menu(mut commands: Commands) {
-    commands.spawn(Camera2d);
-    commands.spawn((Text2d::new("Press space to start"),));
+    commands.spawn((
+        Text2d::new("hello"),
+        Transform::from_translation(Vec3::new(0., 0., 2.)).with_scale(Vec3::new(
+            1. / 512.,
+            1. / 512.,
+            1.,
+        )),
+        TextFont {
+            font_size: 40.0,
+            ..default()
+        },
+    ));
 }
 
-fn cleanup_main_menu(
-    mut commands: Commands,
-    query: Query<Entity, Or<(With<Camera>, With<Text2d>)>>,
-) {
+fn cleanup_main_menu(mut commands: Commands, query: Query<Entity, With<Text2d>>) {
     for entity in &query {
         commands.entity(entity).despawn();
     }
@@ -154,6 +190,32 @@ fn setup_round_over(mut commands: Commands, query: Query<&Player>) {
     ));
 }
 
+fn on_resize_system(
+    mut resize_reader: EventReader<WindowResized>,
+    mut window_size: ResMut<WindowSize>,
+    mut commands: Commands,
+    query: Option<Single<Entity, With<Camera>>>,
+) {
+    if let Some(entity) = query.map(|single| single.into_inner()) {
+        commands.entity(entity).despawn();
+    }
+
+    for e in resize_reader.read() {
+        window_size.width = e.width;
+        window_size.height = e.height;
+    }
+
+    let smallest_dim = window_size.get_smallest_dimension();
+    commands.spawn((
+        Camera2d,
+        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)).with_scale(Vec3::new(
+            2. / smallest_dim,
+            2. / smallest_dim,
+            1.,
+        )),
+    ));
+}
+
 fn update_round_start(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         commands.set_state(AppState::RoundActive);
@@ -184,16 +246,24 @@ fn setup_in_game(
     mut materials: ResMut<Assets<ColorMaterial>>,
     settings: Res<GameSettings>,
     mut images: ResMut<Assets<Image>>,
+    window_size: Res<WindowSize>,
 ) {
-    let size = 512;
+    let smallest_dim = window_size.get_smallest_dimension();
+    let texture_size = if smallest_dim > 512. {
+        smallest_dim as u32
+    } else {
+        512
+    };
     let texture = Image::new_fill(
         Extent3d {
-            width: size,
-            height: size,
+            width: texture_size,
+            height: texture_size,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
-        &vec![0x00; (size * size * 4) as usize],
+        &(0..(texture_size * texture_size * 4))
+            .map(|i| if i % 4 == 3 { 0xff } else { 0 })
+            .collect::<Vec<_>>(),
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
     );
@@ -205,7 +275,7 @@ fn setup_in_game(
         },
         Transform {
             translation: Vec3::new(0.0, 0.0, -2.0), // Position in the middle of the camera's view
-            scale: Vec3::new(2. / size as f32, 2. / size as f32, 1.),
+            scale: Vec3::new(2. / texture_size as f32, 2. / texture_size as f32, 1.),
             ..Default::default()
         },
     ));
@@ -213,14 +283,6 @@ fn setup_in_game(
         image_handle: texture_handle,
     });
 
-    commands.spawn((
-        Camera2d,
-        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)).with_scale(Vec3::new(
-            2. / 512 as f32,
-            2. / 512 as f32,
-            1.,
-        )),
-    ));
     if settings.number_of_players >= 1 {
         spawn_player(
             "RED".to_string(),
@@ -309,7 +371,7 @@ fn random_position_and_direction() -> (Vec3, Vec3) {
 
 fn cleanup_in_game(
     mut commands: Commands,
-    query: Query<Entity, Or<(With<Camera>, With<Mesh2d>, With<Sprite>)>>,
+    query: Query<Entity, Or<(With<Mesh2d>, With<Sprite>)>>,
     mut images: ResMut<Assets<Image>>,
     trail_texture: Option<Res<TrailTexture>>,
 ) {
@@ -472,8 +534,10 @@ fn game_logic(
         for vec in get_collision_points(transform.translation, player.dir) {
             if let Some((x, y)) = game_to_texture_coord(vec, size) {
                 let index = (y * size + x) * 4; // RGBA
-                let alpha = texture.data[index + 3];
-                if alpha != 0 {
+                if texture.data[index] != 0
+                    || texture.data[index + 1] != 0
+                    || texture.data[index + 2] != 0
+                {
                     // something was hit
                     player.alive = false;
                 }
