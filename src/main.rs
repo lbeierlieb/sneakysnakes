@@ -121,14 +121,21 @@ fn main() {
 }
 
 fn setup_main_menu(mut commands: Commands) {
-    commands.spawn(Camera2d);
-    commands.spawn((Text2d::new("Press space to start"),));
+    commands.spawn((
+        Text2d::new("hello"),
+        Transform::from_translation(Vec3::new(0., 0., 2.)).with_scale(Vec3::new(
+            1. / 512.,
+            1. / 512.,
+            1.,
+        )),
+        TextFont {
+            font_size: 40.0,
+            ..default()
+        },
+    ));
 }
 
-fn cleanup_main_menu(
-    mut commands: Commands,
-    query: Query<Entity, Or<(With<Camera>, With<Text2d>)>>,
-) {
+fn cleanup_main_menu(mut commands: Commands, query: Query<Entity, With<Text2d>>) {
     for entity in &query {
         commands.entity(entity).despawn();
     }
@@ -186,11 +193,27 @@ fn setup_round_over(mut commands: Commands, query: Query<&Player>) {
 fn on_resize_system(
     mut resize_reader: EventReader<WindowResized>,
     mut window_size: ResMut<WindowSize>,
+    mut commands: Commands,
+    query: Option<Single<Entity, With<Camera>>>,
 ) {
+    if let Some(entity) = query.map(|single| single.into_inner()) {
+        commands.entity(entity).despawn();
+    }
+
     for e in resize_reader.read() {
         window_size.width = e.width;
         window_size.height = e.height;
     }
+
+    let smallest_dim = window_size.get_smallest_dimension();
+    commands.spawn((
+        Camera2d,
+        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)).with_scale(Vec3::new(
+            2. / smallest_dim,
+            2. / smallest_dim,
+            1.,
+        )),
+    ));
 }
 
 fn update_round_start(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
@@ -226,7 +249,11 @@ fn setup_in_game(
     window_size: Res<WindowSize>,
 ) {
     let smallest_dim = window_size.get_smallest_dimension();
-    let texture_size = smallest_dim as u32;
+    let texture_size = if smallest_dim > 512. {
+        smallest_dim as u32
+    } else {
+        512
+    };
     let texture = Image::new_fill(
         Extent3d {
             width: texture_size,
@@ -256,14 +283,6 @@ fn setup_in_game(
         image_handle: texture_handle,
     });
 
-    commands.spawn((
-        Camera2d,
-        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)).with_scale(Vec3::new(
-            2. / smallest_dim,
-            2. / smallest_dim,
-            1.,
-        )),
-    ));
     if settings.number_of_players >= 1 {
         spawn_player(
             "RED".to_string(),
@@ -352,7 +371,7 @@ fn random_position_and_direction() -> (Vec3, Vec3) {
 
 fn cleanup_in_game(
     mut commands: Commands,
-    query: Query<Entity, Or<(With<Camera>, With<Mesh2d>, With<Sprite>)>>,
+    query: Query<Entity, Or<(With<Mesh2d>, With<Sprite>)>>,
     mut images: ResMut<Assets<Image>>,
     trail_texture: Option<Res<TrailTexture>>,
 ) {
