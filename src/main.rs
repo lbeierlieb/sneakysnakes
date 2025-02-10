@@ -234,7 +234,9 @@ fn setup_in_game(
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
-        &vec![0x00; (texture_size * texture_size * 4) as usize],
+        &(0..(texture_size * texture_size * 4))
+            .map(|i| if i % 4 == 3 { 0xff } else { 0 })
+            .collect::<Vec<_>>(),
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
     );
@@ -513,8 +515,10 @@ fn game_logic(
         for vec in get_collision_points(transform.translation, player.dir) {
             if let Some((x, y)) = game_to_texture_coord(vec, size) {
                 let index = (y * size + x) * 4; // RGBA
-                let alpha = texture.data[index + 3];
-                if alpha != 0 {
+                if texture.data[index] != 0
+                    || texture.data[index + 1] != 0
+                    || texture.data[index + 2] != 0
+                {
                     // something was hit
                     player.alive = false;
                 }
