@@ -261,9 +261,7 @@ fn setup_in_game(
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
-        &(0..(texture_size * texture_size * 4))
-            .map(|i| if i % 4 == 3 { 0xff } else { 0 })
-            .collect::<Vec<_>>(),
+        &vec![0x00; (texture_size * texture_size * 4) as usize],
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
     );
