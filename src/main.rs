@@ -280,6 +280,13 @@ fn setup_in_game(
     commands.insert_resource(TrailTexture {
         image_handle: texture_handle,
     });
+    commands.spawn((
+        Mesh2d(meshes.add(Rectangle::default())),
+        MeshMaterial2d(materials.add(Color::from(BLACK))),
+        Transform::default()
+            .with_scale(Vec3::splat(2.))
+            .with_translation(Vec3::new(0., 0., -10.)),
+    ));
 
     if settings.number_of_players >= 1 {
         spawn_player(
