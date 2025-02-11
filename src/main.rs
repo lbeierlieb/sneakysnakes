@@ -196,24 +196,25 @@ fn on_resize_system(
     mut commands: Commands,
     query: Option<Single<Entity, With<Camera>>>,
 ) {
-    if let Some(entity) = query.map(|single| single.into_inner()) {
-        commands.entity(entity).despawn();
-    }
-
-    for e in resize_reader.read() {
+    if let Some(e) = resize_reader.read().next() {
+        dbg!("hello");
         window_size.width = e.width;
         window_size.height = e.height;
-    }
 
-    let smallest_dim = window_size.get_smallest_dimension();
-    commands.spawn((
-        Camera2d,
-        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)).with_scale(Vec3::new(
-            2. / smallest_dim,
-            2. / smallest_dim,
-            1.,
-        )),
-    ));
+        if let Some(entity) = query.map(|single| single.into_inner()) {
+            commands.entity(entity).despawn();
+        }
+
+        let smallest_dim = window_size.get_smallest_dimension();
+        commands.spawn((
+            Camera2d,
+            Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)).with_scale(Vec3::new(
+                2. / smallest_dim,
+                2. / smallest_dim,
+                1.,
+            )),
+        ));
+    }
 }
 
 fn update_round_start(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
