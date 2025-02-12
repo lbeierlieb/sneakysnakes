@@ -516,11 +516,13 @@ fn game_logic(
         let dir_before = player.dir;
         let (left_key, right_key) = player.steer_keys;
         if keyboard_input.pressed(left_key) {
-            let rotation = Quat::from_rotation_z(std::f32::consts::PI / 60.0);
+            let rotation =
+                Quat::from_rotation_z(std::f32::consts::PI / 60.0 / 0.016 * time.delta_secs());
             player.dir = rotation.mul_vec3(player.dir);
         }
         if keyboard_input.pressed(right_key) {
-            let rotation = Quat::from_rotation_z(-std::f32::consts::PI / 60.0);
+            let rotation =
+                Quat::from_rotation_z(-std::f32::consts::PI / 60.0 / 0.016 * time.delta_secs());
             player.dir = rotation.mul_vec3(player.dir);
         }
 
