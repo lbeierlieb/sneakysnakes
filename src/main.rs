@@ -197,7 +197,6 @@ fn on_resize_system(
     query: Option<Single<Entity, With<Camera>>>,
 ) {
     if let Some(e) = resize_reader.read().next() {
-        dbg!("hello");
         window_size.width = e.width;
         window_size.height = e.height;
 
