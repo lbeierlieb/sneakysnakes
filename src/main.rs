@@ -491,8 +491,31 @@ struct TrailTexture {
 }
 
 #[derive(Component)]
-struct Item {
-    effect: ItemEffectIndividual,
+enum Item {
+    SelfEffect(ItemEffectIndividual),
+    OthersEffect(ItemEffectIndividual),
+    GlobalEffect(ItemEffectGlobal),
+}
+
+impl Item {
+    fn get_random() -> Self {
+        let mut rng = rand::thread_rng();
+
+        match rng.gen_range(0..3) {
+            0 => Self::SelfEffect(ItemEffectIndividual::get_random()),
+            1 => Self::OthersEffect(ItemEffectIndividual::get_random()),
+            2 => Self::GlobalEffect(ItemEffectGlobal::get_random()),
+            _ => panic!("item randomizer is broken"),
+        }
+    }
+
+    fn get_text(&self) -> String {
+        match self {
+            Item::SelfEffect(e) => e.get_text(),
+            Item::OthersEffect(e) => e.get_text(),
+            Item::GlobalEffect(e) => e.get_text(),
+        }
+    }
 }
 
 fn game_logic(
@@ -761,6 +784,29 @@ impl ItemEffectIndividual {
     }
 }
 
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum ItemEffectGlobal {
+    Clear,
+}
+
+impl ItemEffectGlobal {
+    fn get_random() -> Self {
+        let mut rng = rand::thread_rng();
+
+        match rng.gen_range(0..1) {
+            0 => Self::Clear,
+            _ => panic!("item randomizer is broken"),
+        }
+    }
+
+    fn get_text(&self) -> String {
+        match self {
+            Self::Clear => "clear",
+        }
+        .to_string()
+    }
+}
+
 fn spawn_items(
     mut commands: Commands,
     mut spawn_state: ResMut<ItemSpawnState>,
@@ -769,10 +815,16 @@ fn spawn_items(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     if spawn_state.update(time.delta()) {
-        let effect = ItemEffectIndividual::get_random();
+        let item = Item::get_random();
+        let item_text = item.get_text();
+        let item_color = match item {
+            Item::SelfEffect(_) => Color::from(GREEN),
+            Item::OthersEffect(_) => Color::from(RED),
+            Item::GlobalEffect(_) => Color::from(BLUE),
+        };
         let entity = commands
             .spawn((
-                Item { effect },
+                item,
                 Mesh2d(meshes.add(Circle::default())),
                 MeshMaterial2d(materials.add(Color::srgba(0., 0., 0., 0.))),
                 Transform::default()
@@ -783,17 +835,17 @@ fn spawn_items(
 
         commands.entity(entity).with_children(|parent| {
             parent.spawn((
-                Text2d::new(effect.get_text()),
+                Text2d::new(item_text),
                 TextFont {
                     font_size: 15.0,
                     ..default()
                 },
                 Transform::from_translation(Vec3::new(0., 0., 0.2))
-                    .with_scale(Vec3::splat(1. / 256.)),
+                    .with_scale(Vec3::splat(1. / 280.)),
             ));
             parent.spawn((
                 Mesh2d(meshes.add(Circle::default())),
-                MeshMaterial2d(materials.add(Color::from(GREEN))),
+                MeshMaterial2d(materials.add(item_color)),
                 Transform::from_translation(Vec3::new(0., 0., 0.1))
                     .with_scale(Vec3::splat(40. / 256.)),
             ));
@@ -811,7 +863,10 @@ fn item_collection(
     mut commands: Commands,
     mut player_query: Query<(&mut Player, &Transform)>,
     item_query: Query<(Entity, &Item, &Transform)>,
+    mut images: ResMut<Assets<Image>>,
+    trail_texture: Res<TrailTexture>,
 ) {
+    let mut others_effects: Vec<(String, ItemEffectIndividual)> = Vec::new();
     for (mut player, player_transform) in &mut player_query {
         let player_translation = player_transform.translation;
         let player_xy = Vec2::new(player_translation.x, player_translation.y);
@@ -821,9 +876,34 @@ fn item_collection(
             let item_xy = Vec2::new(item_translation.x, item_translation.y);
 
             if player_xy.distance(item_xy) <= 22.5 / 256. {
-                player.add_effect(item.effect);
+                match item {
+                    Item::SelfEffect(e) => {
+                        player.add_effect(e.clone());
+                    }
+                    Item::OthersEffect(e) => {
+                        others_effects.push((player.name.clone(), e.clone()));
+                    }
+                    Item::GlobalEffect(_) => {
+                        let texture_handle = &trail_texture.image_handle;
+                        let texture = images.get_mut(texture_handle).unwrap();
+                        let pixel_count = (texture.size().x * texture.size().y) as usize;
+                        for i in 0..pixel_count * 4 {
+                            texture.data[i] = 0;
+                        }
+                    }
+                }
+
                 commands.entity(entity).despawn_recursive();
             }
+        }
+    }
+    for (name, effect) in others_effects {
+        for (mut player, _) in &mut player_query {
+            if player.name == name {
+                continue;
+            }
+
+            player.add_effect(effect);
         }
     }
 }
