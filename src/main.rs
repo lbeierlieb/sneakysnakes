@@ -870,42 +870,48 @@ fn spawn_items(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     if spawn_state.update(time.delta()) {
-        let item = Item::get_random();
-        let item_text = item.get_text();
-        let item_color = match item {
-            Item::SelfEffect(_) => Color::from(GREEN),
-            Item::OthersEffect(_) => Color::from(RED),
-            Item::GlobalEffect(_) => Color::from(BLUE),
-        };
-        let entity = commands
-            .spawn((
-                item,
-                Mesh2d(meshes.add(Circle::default())),
-                MeshMaterial2d(materials.add(Color::srgba(0., 0., 0., 0.))),
-                Transform::default()
-                    .with_translation(ItemSpawnState::random_position())
-                    .with_scale(Vec3::splat(1.)),
-            ))
-            .id();
-
-        commands.entity(entity).with_children(|parent| {
-            parent.spawn((
-                Text2d::new(item_text),
-                TextFont {
-                    font_size: 15.0,
-                    ..default()
-                },
-                Transform::from_translation(Vec3::new(0., 0., 0.2))
-                    .with_scale(Vec3::splat(1. / 280.)),
-            ));
-            parent.spawn((
-                Mesh2d(meshes.add(Circle::default())),
-                MeshMaterial2d(materials.add(item_color)),
-                Transform::from_translation(Vec3::new(0., 0., 0.1))
-                    .with_scale(Vec3::splat(40. / 256.)),
-            ));
-        });
+        spawn_item(&mut commands, &mut meshes, &mut materials);
     }
+}
+
+fn spawn_item(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+) {
+    let item = Item::get_random();
+    let item_text = item.get_text();
+    let item_color = match item {
+        Item::SelfEffect(_) => Color::from(GREEN),
+        Item::OthersEffect(_) => Color::from(RED),
+        Item::GlobalEffect(_) => Color::from(BLUE),
+    };
+    let entity = commands
+        .spawn((
+            item,
+            Mesh2d(meshes.add(Circle::default())),
+            MeshMaterial2d(materials.add(Color::srgba(0., 0., 0., 0.))),
+            Transform::default()
+                .with_translation(ItemSpawnState::random_position())
+                .with_scale(Vec3::splat(1.)),
+        ))
+        .id();
+
+    commands.entity(entity).with_children(|parent| {
+        parent.spawn((
+            Text2d::new(item_text),
+            TextFont {
+                font_size: 15.0,
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(0., 0., 0.2)).with_scale(Vec3::splat(1. / 280.)),
+        ));
+        parent.spawn((
+            Mesh2d(meshes.add(Circle::default())),
+            MeshMaterial2d(materials.add(item_color)),
+            Transform::from_translation(Vec3::new(0., 0., 0.1)).with_scale(Vec3::splat(40. / 256.)),
+        ));
+    });
 }
 
 fn update_player_item_effects(mut query: Query<&mut Player>, time: Res<Time>) {
