@@ -443,6 +443,14 @@ impl Player {
         count_thick as i64 - count_thin as i64
     }
 
+    fn is_free_flying(&self) -> bool {
+        self.item_effects
+            .iter()
+            .filter(|(effect, _)| *effect == ItemEffectIndividual::FreeFlying)
+            .next()
+            .is_some()
+    }
+
     fn update_item_effects(&mut self, delta: Duration) {
         let mut indices_to_remove = vec![];
         for (index, tuple) in self.item_effects.iter_mut().enumerate() {
@@ -518,8 +526,8 @@ impl Item {
         let mut rng = rand::thread_rng();
 
         match rng.gen_range(0..3) {
-            0 => Self::SelfEffect(ItemEffectIndividual::get_random()),
-            1 => Self::OthersEffect(ItemEffectIndividual::get_random()),
+            0 => Self::SelfEffect(ItemEffectIndividual::get_random_selfeffect()),
+            1 => Self::OthersEffect(ItemEffectIndividual::get_random_otherseffect()),
             2 => Self::GlobalEffect(ItemEffectGlobal::get_random()),
             _ => panic!("item randomizer is broken"),
         }
@@ -586,7 +594,7 @@ fn game_logic(
             if let Some((x, y)) = game_to_texture_coord(vec, size) {
                 let index = (y * size + x) * 4; // RGBA
                 let alpha = texture.data[index + 3];
-                if alpha != 0 {
+                if alpha != 0 && !player.is_free_flying() {
                     // something was hit
                     player.alive = false;
                 }
@@ -597,7 +605,7 @@ fn game_logic(
         }
 
         player.gap_state.update(time.delta());
-        if !player.gap_state.gapping {
+        if !player.gap_state.gapping && !player.is_free_flying() {
             draw_trail(
                 pos_before,
                 dir_before,
@@ -787,10 +795,24 @@ enum ItemEffectIndividual {
     Slowness,
     Thin,
     Thick,
+    FreeFlying,
 }
 
 impl ItemEffectIndividual {
-    fn get_random() -> Self {
+    fn get_random_selfeffect() -> Self {
+        let mut rng = rand::thread_rng();
+
+        match rng.gen_range(0..5) {
+            0 => Self::Speed,
+            1 => Self::Slowness,
+            2 => Self::Thin,
+            3 => Self::Thick,
+            4 => Self::FreeFlying,
+            _ => panic!("item randomizer is broken"),
+        }
+    }
+
+    fn get_random_otherseffect() -> Self {
         let mut rng = rand::thread_rng();
 
         match rng.gen_range(0..4) {
@@ -808,6 +830,7 @@ impl ItemEffectIndividual {
             Self::Slowness => "slow",
             Self::Thin => "thin",
             Self::Thick => "thick",
+            Self::FreeFlying => "free",
         }
         .to_string()
     }
