@@ -577,7 +577,11 @@ fn game_logic(
         let player_speed = player_base_speed * modifier;
         transform.translation += player.dir * time.delta_secs() * player_speed;
 
-        for vec in get_collision_points(transform.translation, player.dir) {
+        let player_base_radius = 2.5 / 256.;
+        let modifier = 2f32.powf(player.thickness_mod() as f32);
+        let player_radius = player_base_radius * modifier;
+
+        for vec in get_collision_points(transform.translation, player.dir, player_radius) {
             if let Some((x, y)) = game_to_texture_coord(vec, size) {
                 let index = (y * size + x) * 4; // RGBA
                 let alpha = texture.data[index + 3];
@@ -593,9 +597,6 @@ fn game_logic(
 
         player.gap_state.update(time.delta());
         if !player.gap_state.gapping {
-            let player_base_radius = 2.5 / 256.;
-            let modifier = 2f32.powf(player.thickness_mod() as f32);
-            let player_radius = player_base_radius * modifier;
             draw_trail(
                 pos_before,
                 dir_before,
@@ -628,12 +629,12 @@ fn game_to_texture_coord(game_coord: Vec3, texture_size: usize) -> Option<(usize
     Some((ix as usize, iy as usize))
 }
 
-fn get_collision_points(translation: Vec3, dir: Vec3) -> Vec<Vec3> {
+fn get_collision_points(translation: Vec3, dir: Vec3, radius: f32) -> Vec<Vec3> {
     let rotation_left = Quat::from_rotation_z(std::f32::consts::PI / 3.);
     let rotation_right = Quat::from_rotation_z(-std::f32::consts::PI / 3.);
-    let front = translation + 2.5 / 256.0 * dir;
-    let left = translation + 2.5 / 256.0 * rotation_left.mul_vec3(dir);
-    let right = translation + 2.5 / 256.0 * rotation_right.mul_vec3(dir);
+    let front = translation + radius * dir;
+    let left = translation + radius * rotation_left.mul_vec3(dir);
+    let right = translation + radius * rotation_right.mul_vec3(dir);
     vec![front, left, right]
 }
 
