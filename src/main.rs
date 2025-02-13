@@ -427,6 +427,21 @@ impl Player {
         count_speed as i64 - count_slow as i64
     }
 
+    fn thickness_mod(&self) -> i64 {
+        let count_thick = self
+            .item_effects
+            .iter()
+            .filter(|(effect, _)| *effect == ItemEffectIndividual::Thick)
+            .count();
+        let count_thin = self
+            .item_effects
+            .iter()
+            .filter(|(effect, _)| *effect == ItemEffectIndividual::Thin)
+            .count();
+
+        count_thick as i64 - count_thin as i64
+    }
+
     fn update_item_effects(&mut self, delta: Duration) {
         let mut indices_to_remove = vec![];
         for (index, tuple) in self.item_effects.iter_mut().enumerate() {
