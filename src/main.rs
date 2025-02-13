@@ -443,6 +443,14 @@ impl Player {
         count_thick as i64 - count_thin as i64
     }
 
+    fn is_free_flying(&self) -> bool {
+        self.item_effects
+            .iter()
+            .filter(|(effect, _)| *effect == ItemEffectIndividual::FreeFlying)
+            .next()
+            .is_some()
+    }
+
     fn update_item_effects(&mut self, delta: Duration) {
         let mut indices_to_remove = vec![];
         for (index, tuple) in self.item_effects.iter_mut().enumerate() {
