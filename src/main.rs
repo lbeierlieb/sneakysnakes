@@ -590,24 +590,22 @@ fn game_logic(
         let player_radius = player_base_radius * modifier;
         transform.scale = Vec3::splat(player_radius * 2.);
 
-        if !player.is_free_flying() {
-            for vec in get_collision_points(transform.translation, player.dir, player_radius) {
-                if let Some((x, y)) = game_to_texture_coord(vec, size) {
-                    let index = (y * size + x) * 4; // RGBA
-                    let alpha = texture.data[index + 3];
-                    if alpha != 0 {
-                        // something was hit
-                        player.alive = false;
-                    }
-                } else {
-                    // player is out of bounds
+        for vec in get_collision_points(transform.translation, player.dir, player_radius) {
+            if let Some((x, y)) = game_to_texture_coord(vec, size) {
+                let index = (y * size + x) * 4; // RGBA
+                let alpha = texture.data[index + 3];
+                if alpha != 0 && !player.is_free_flying() {
+                    // something was hit
                     player.alive = false;
                 }
+            } else {
+                // player is out of bounds
+                player.alive = false;
             }
         }
 
         player.gap_state.update(time.delta());
-        if !player.gap_state.gapping {
+        if !player.gap_state.gapping && !player.is_free_flying() {
             draw_trail(
                 pos_before,
                 dir_before,
