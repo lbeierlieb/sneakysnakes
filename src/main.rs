@@ -926,6 +926,8 @@ fn item_collection(
     item_query: Query<(Entity, &Item, &Transform)>,
     mut images: ResMut<Assets<Image>>,
     trail_texture: Res<TrailTexture>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     let mut others_effects: Vec<(String, ItemEffectIndividual)> = Vec::new();
     for (mut player, player_transform) in &mut player_query {
@@ -953,7 +955,11 @@ fn item_collection(
                                 texture.data[i] = 0;
                             }
                         }
-                        ItemEffectGlobal::MoreItems => {}
+                        ItemEffectGlobal::MoreItems => {
+                            spawn_item(&mut commands, &mut meshes, &mut materials);
+                            spawn_item(&mut commands, &mut meshes, &mut materials);
+                            spawn_item(&mut commands, &mut meshes, &mut materials);
+                        }
                     },
                 }
 
