@@ -839,14 +839,16 @@ impl ItemEffectIndividual {
 #[derive(PartialEq, Eq, Clone, Copy)]
 enum ItemEffectGlobal {
     Clear,
+    MoreItems,
 }
 
 impl ItemEffectGlobal {
     fn get_random() -> Self {
         let mut rng = rand::thread_rng();
 
-        match rng.gen_range(0..1) {
+        match rng.gen_range(0..2) {
             0 => Self::Clear,
+            1 => Self::MoreItems,
             _ => panic!("item randomizer is broken"),
         }
     }
@@ -854,6 +856,7 @@ impl ItemEffectGlobal {
     fn get_text(&self) -> String {
         match self {
             Self::Clear => "clear",
+            Self::MoreItems => "more",
         }
         .to_string()
     }
@@ -935,14 +938,17 @@ fn item_collection(
                     Item::OthersEffect(e) => {
                         others_effects.push((player.name.clone(), e.clone()));
                     }
-                    Item::GlobalEffect(_) => {
-                        let texture_handle = &trail_texture.image_handle;
-                        let texture = images.get_mut(texture_handle).unwrap();
-                        let pixel_count = (texture.size().x * texture.size().y) as usize;
-                        for i in 0..pixel_count * 4 {
-                            texture.data[i] = 0;
+                    Item::GlobalEffect(e) => match e {
+                        ItemEffectGlobal::Clear => {
+                            let texture_handle = &trail_texture.image_handle;
+                            let texture = images.get_mut(texture_handle).unwrap();
+                            let pixel_count = (texture.size().x * texture.size().y) as usize;
+                            for i in 0..pixel_count * 4 {
+                                texture.data[i] = 0;
+                            }
                         }
-                    }
+                        ItemEffectGlobal::MoreItems => {}
+                    },
                 }
 
                 commands.entity(entity).despawn_recursive();
