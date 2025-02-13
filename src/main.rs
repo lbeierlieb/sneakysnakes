@@ -339,6 +339,7 @@ fn move_players_a_bit(
             player.dir,
             pos,
             player.dir,
+            2.5 / 256.,
             texture,
             player.color,
         );
@@ -592,11 +593,15 @@ fn game_logic(
 
         player.gap_state.update(time.delta());
         if !player.gap_state.gapping {
+            let player_base_radius = 2.5 / 256.;
+            let modifier = 2f32.powf(player.thickness_mod() as f32);
+            let player_radius = player_base_radius * modifier;
             draw_trail(
                 pos_before,
                 dir_before,
                 transform.translation,
                 player.dir,
+                player_radius,
                 texture,
                 player.color,
             );
@@ -637,6 +642,7 @@ fn draw_trail(
     dir_before: Vec3,
     translation_now: Vec3,
     dir_now: Vec3,
+    radius: f32,
     texture: &mut Image,
     color: Color,
 ) {
@@ -644,12 +650,12 @@ fn draw_trail(
     let rotation_90deg = Quat::from_rotation_z(std::f32::consts::PI / 2.);
 
     let dir_rot_before = rotation_90deg.mul_vec3(dir_before);
-    let left_before = translation_before + 2.5 / 256. * dir_rot_before;
-    let right_before = translation_before - 2.5 / 256. * dir_rot_before;
+    let left_before = translation_before + radius * dir_rot_before;
+    let right_before = translation_before - radius * dir_rot_before;
 
     let dir_rot_now = rotation_90deg.mul_vec3(dir_now);
-    let left_now = translation_now + 2.5 / 256. * dir_rot_now;
-    let right_now = translation_now - 2.5 / 256. * dir_rot_now;
+    let left_now = translation_now + radius * dir_rot_now;
+    let right_now = translation_now - radius * dir_rot_now;
 
     let quad = [
         game_to_texture_vec(left_now, size),
