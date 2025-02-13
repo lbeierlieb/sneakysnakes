@@ -518,8 +518,8 @@ impl Item {
         let mut rng = rand::thread_rng();
 
         match rng.gen_range(0..3) {
-            0 => Self::SelfEffect(ItemEffectIndividual::get_random()),
-            1 => Self::OthersEffect(ItemEffectIndividual::get_random()),
+            0 => Self::SelfEffect(ItemEffectIndividual::get_random_selfeffect()),
+            1 => Self::OthersEffect(ItemEffectIndividual::get_random_otherseffect()),
             2 => Self::GlobalEffect(ItemEffectGlobal::get_random()),
             _ => panic!("item randomizer is broken"),
         }
@@ -787,10 +787,24 @@ enum ItemEffectIndividual {
     Slowness,
     Thin,
     Thick,
+    FreeFlying,
 }
 
 impl ItemEffectIndividual {
-    fn get_random() -> Self {
+    fn get_random_selfeffect() -> Self {
+        let mut rng = rand::thread_rng();
+
+        match rng.gen_range(0..5) {
+            0 => Self::Speed,
+            1 => Self::Slowness,
+            2 => Self::Thin,
+            3 => Self::Thick,
+            4 => Self::FreeFlying,
+            _ => panic!("item randomizer is broken"),
+        }
+    }
+
+    fn get_random_otherseffect() -> Self {
         let mut rng = rand::thread_rng();
 
         match rng.gen_range(0..4) {
@@ -808,6 +822,7 @@ impl ItemEffectIndividual {
             Self::Slowness => "slow",
             Self::Thin => "thin",
             Self::Thick => "thick",
+            Self::FreeFlying => "free",
         }
         .to_string()
     }
