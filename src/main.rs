@@ -839,14 +839,16 @@ impl ItemEffectIndividual {
 #[derive(PartialEq, Eq, Clone, Copy)]
 enum ItemEffectGlobal {
     Clear,
+    MoreItems,
 }
 
 impl ItemEffectGlobal {
     fn get_random() -> Self {
         let mut rng = rand::thread_rng();
 
-        match rng.gen_range(0..1) {
+        match rng.gen_range(0..2) {
             0 => Self::Clear,
+            1 => Self::MoreItems,
             _ => panic!("item randomizer is broken"),
         }
     }
@@ -854,6 +856,7 @@ impl ItemEffectGlobal {
     fn get_text(&self) -> String {
         match self {
             Self::Clear => "clear",
+            Self::MoreItems => "more",
         }
         .to_string()
     }
@@ -867,42 +870,48 @@ fn spawn_items(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     if spawn_state.update(time.delta()) {
-        let item = Item::get_random();
-        let item_text = item.get_text();
-        let item_color = match item {
-            Item::SelfEffect(_) => Color::from(GREEN),
-            Item::OthersEffect(_) => Color::from(RED),
-            Item::GlobalEffect(_) => Color::from(BLUE),
-        };
-        let entity = commands
-            .spawn((
-                item,
-                Mesh2d(meshes.add(Circle::default())),
-                MeshMaterial2d(materials.add(Color::srgba(0., 0., 0., 0.))),
-                Transform::default()
-                    .with_translation(ItemSpawnState::random_position())
-                    .with_scale(Vec3::splat(1.)),
-            ))
-            .id();
-
-        commands.entity(entity).with_children(|parent| {
-            parent.spawn((
-                Text2d::new(item_text),
-                TextFont {
-                    font_size: 15.0,
-                    ..default()
-                },
-                Transform::from_translation(Vec3::new(0., 0., 0.2))
-                    .with_scale(Vec3::splat(1. / 280.)),
-            ));
-            parent.spawn((
-                Mesh2d(meshes.add(Circle::default())),
-                MeshMaterial2d(materials.add(item_color)),
-                Transform::from_translation(Vec3::new(0., 0., 0.1))
-                    .with_scale(Vec3::splat(40. / 256.)),
-            ));
-        });
+        spawn_item(&mut commands, &mut meshes, &mut materials);
     }
+}
+
+fn spawn_item(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+) {
+    let item = Item::get_random();
+    let item_text = item.get_text();
+    let item_color = match item {
+        Item::SelfEffect(_) => Color::from(GREEN),
+        Item::OthersEffect(_) => Color::from(RED),
+        Item::GlobalEffect(_) => Color::from(BLUE),
+    };
+    let entity = commands
+        .spawn((
+            item,
+            Mesh2d(meshes.add(Circle::default())),
+            MeshMaterial2d(materials.add(Color::srgba(0., 0., 0., 0.))),
+            Transform::default()
+                .with_translation(ItemSpawnState::random_position())
+                .with_scale(Vec3::splat(1.)),
+        ))
+        .id();
+
+    commands.entity(entity).with_children(|parent| {
+        parent.spawn((
+            Text2d::new(item_text),
+            TextFont {
+                font_size: 15.0,
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(0., 0., 0.2)).with_scale(Vec3::splat(1. / 280.)),
+        ));
+        parent.spawn((
+            Mesh2d(meshes.add(Circle::default())),
+            MeshMaterial2d(materials.add(item_color)),
+            Transform::from_translation(Vec3::new(0., 0., 0.1)).with_scale(Vec3::splat(40. / 256.)),
+        ));
+    });
 }
 
 fn update_player_item_effects(mut query: Query<&mut Player>, time: Res<Time>) {
@@ -917,6 +926,8 @@ fn item_collection(
     item_query: Query<(Entity, &Item, &Transform)>,
     mut images: ResMut<Assets<Image>>,
     trail_texture: Res<TrailTexture>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     let mut others_effects: Vec<(String, ItemEffectIndividual)> = Vec::new();
     for (mut player, player_transform) in &mut player_query {
@@ -935,14 +946,21 @@ fn item_collection(
                     Item::OthersEffect(e) => {
                         others_effects.push((player.name.clone(), e.clone()));
                     }
-                    Item::GlobalEffect(_) => {
-                        let texture_handle = &trail_texture.image_handle;
-                        let texture = images.get_mut(texture_handle).unwrap();
-                        let pixel_count = (texture.size().x * texture.size().y) as usize;
-                        for i in 0..pixel_count * 4 {
-                            texture.data[i] = 0;
+                    Item::GlobalEffect(e) => match e {
+                        ItemEffectGlobal::Clear => {
+                            let texture_handle = &trail_texture.image_handle;
+                            let texture = images.get_mut(texture_handle).unwrap();
+                            let pixel_count = (texture.size().x * texture.size().y) as usize;
+                            for i in 0..pixel_count * 4 {
+                                texture.data[i] = 0;
+                            }
                         }
-                    }
+                        ItemEffectGlobal::MoreItems => {
+                            spawn_item(&mut commands, &mut meshes, &mut materials);
+                            spawn_item(&mut commands, &mut meshes, &mut materials);
+                            spawn_item(&mut commands, &mut meshes, &mut materials);
+                        }
+                    },
                 }
 
                 commands.entity(entity).despawn_recursive();
