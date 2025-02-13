@@ -339,6 +339,7 @@ fn move_players_a_bit(
             player.dir,
             pos,
             player.dir,
+            2.5 / 256.,
             texture,
             player.color,
         );
@@ -425,6 +426,21 @@ impl Player {
             .count();
 
         count_speed as i64 - count_slow as i64
+    }
+
+    fn thickness_mod(&self) -> i64 {
+        let count_thick = self
+            .item_effects
+            .iter()
+            .filter(|(effect, _)| *effect == ItemEffectIndividual::Thick)
+            .count();
+        let count_thin = self
+            .item_effects
+            .iter()
+            .filter(|(effect, _)| *effect == ItemEffectIndividual::Thin)
+            .count();
+
+        count_thick as i64 - count_thin as i64
     }
 
     fn update_item_effects(&mut self, delta: Duration) {
@@ -557,11 +573,16 @@ fn game_logic(
         let pos_before = transform.translation;
 
         let player_base_speed = 50. / 256.;
-        let modifier = player.speed_mod() as f32 * 0.5 + 1.;
+        let modifier = 2f32.powf(player.speed_mod() as f32);
         let player_speed = player_base_speed * modifier;
         transform.translation += player.dir * time.delta_secs() * player_speed;
 
-        for vec in get_collision_points(transform.translation, player.dir) {
+        let player_base_radius = 2.5 / 256.;
+        let modifier = 2f32.powf(player.thickness_mod() as f32);
+        let player_radius = player_base_radius * modifier;
+        transform.scale = Vec3::splat(player_radius * 2.);
+
+        for vec in get_collision_points(transform.translation, player.dir, player_radius) {
             if let Some((x, y)) = game_to_texture_coord(vec, size) {
                 let index = (y * size + x) * 4; // RGBA
                 let alpha = texture.data[index + 3];
@@ -582,6 +603,7 @@ fn game_logic(
                 dir_before,
                 transform.translation,
                 player.dir,
+                player_radius,
                 texture,
                 player.color,
             );
@@ -608,12 +630,12 @@ fn game_to_texture_coord(game_coord: Vec3, texture_size: usize) -> Option<(usize
     Some((ix as usize, iy as usize))
 }
 
-fn get_collision_points(translation: Vec3, dir: Vec3) -> Vec<Vec3> {
+fn get_collision_points(translation: Vec3, dir: Vec3, radius: f32) -> Vec<Vec3> {
     let rotation_left = Quat::from_rotation_z(std::f32::consts::PI / 3.);
     let rotation_right = Quat::from_rotation_z(-std::f32::consts::PI / 3.);
-    let front = translation + 2.5 / 256.0 * dir;
-    let left = translation + 2.5 / 256.0 * rotation_left.mul_vec3(dir);
-    let right = translation + 2.5 / 256.0 * rotation_right.mul_vec3(dir);
+    let front = translation + radius * dir;
+    let left = translation + radius * rotation_left.mul_vec3(dir);
+    let right = translation + radius * rotation_right.mul_vec3(dir);
     vec![front, left, right]
 }
 
@@ -622,6 +644,7 @@ fn draw_trail(
     dir_before: Vec3,
     translation_now: Vec3,
     dir_now: Vec3,
+    radius: f32,
     texture: &mut Image,
     color: Color,
 ) {
@@ -629,12 +652,12 @@ fn draw_trail(
     let rotation_90deg = Quat::from_rotation_z(std::f32::consts::PI / 2.);
 
     let dir_rot_before = rotation_90deg.mul_vec3(dir_before);
-    let left_before = translation_before + 2.5 / 256. * dir_rot_before;
-    let right_before = translation_before - 2.5 / 256. * dir_rot_before;
+    let left_before = translation_before + radius * dir_rot_before;
+    let right_before = translation_before - radius * dir_rot_before;
 
     let dir_rot_now = rotation_90deg.mul_vec3(dir_now);
-    let left_now = translation_now + 2.5 / 256. * dir_rot_now;
-    let right_now = translation_now - 2.5 / 256. * dir_rot_now;
+    let left_now = translation_now + radius * dir_rot_now;
+    let right_now = translation_now - radius * dir_rot_now;
 
     let quad = [
         game_to_texture_vec(left_now, size),
@@ -762,15 +785,19 @@ impl ItemSpawnState {
 enum ItemEffectIndividual {
     Speed,
     Slowness,
+    Thin,
+    Thick,
 }
 
 impl ItemEffectIndividual {
     fn get_random() -> Self {
         let mut rng = rand::thread_rng();
 
-        match rng.gen_range(0..2) {
+        match rng.gen_range(0..4) {
             0 => Self::Speed,
             1 => Self::Slowness,
+            2 => Self::Thin,
+            3 => Self::Thick,
             _ => panic!("item randomizer is broken"),
         }
     }
@@ -779,6 +806,8 @@ impl ItemEffectIndividual {
         match self {
             Self::Speed => "fast",
             Self::Slowness => "slow",
+            Self::Thin => "thin",
+            Self::Thick => "thick",
         }
         .to_string()
     }
