@@ -762,15 +762,19 @@ impl ItemSpawnState {
 enum ItemEffectIndividual {
     Speed,
     Slowness,
+    Thin,
+    Thick,
 }
 
 impl ItemEffectIndividual {
     fn get_random() -> Self {
         let mut rng = rand::thread_rng();
 
-        match rng.gen_range(0..2) {
+        match rng.gen_range(0..4) {
             0 => Self::Speed,
             1 => Self::Slowness,
+            2 => Self::Thin,
+            3 => Self::Thick,
             _ => panic!("item randomizer is broken"),
         }
     }
@@ -779,6 +783,8 @@ impl ItemEffectIndividual {
         match self {
             Self::Speed => "fast",
             Self::Slowness => "slow",
+            Self::Thin => "thin",
+            Self::Thick => "thick",
         }
         .to_string()
     }
