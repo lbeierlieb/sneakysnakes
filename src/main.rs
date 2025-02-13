@@ -580,6 +580,7 @@ fn game_logic(
         let player_base_radius = 2.5 / 256.;
         let modifier = 2f32.powf(player.thickness_mod() as f32);
         let player_radius = player_base_radius * modifier;
+        transform.scale = Vec3::splat(player_radius * 2.);
 
         for vec in get_collision_points(transform.translation, player.dir, player_radius) {
             if let Some((x, y)) = game_to_texture_coord(vec, size) {
