@@ -1,0 +1,31 @@
+name: Nix Build Check
+
+on:
+  pull_request:
+
+jobs:
+  build-default:
+    name: Build Default Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Nix
+        uses: cachix/install-nix-action@v26
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Default Package
+        run: nix build .
+
+  build-wasm:
+    name: Build sneakysnakes-wasm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Nix
+        uses: cachix/install-nix-action@v26
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build sneakysnakes-wasm
+        run: nix build .#sneakysnakes-wasm.x86_64-linux

@@ -1,0 +1,31 @@
+name: Code Format Check
+
+on:
+  pull_request:
+
+jobs:
+  rustfmt:
+    name: Check Rust formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --check
+
+  nixfmt:
+    name: Check Nix formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Nix
+        uses: cachix/install-nix-action@v26
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install nixpkgs-fmt
+        run: nix profile install nixpkgs#nixpkgs-fmt
+
+      - name: Run nixpkgs-fmt
+        run: nixpkgs-fmt --check .
