@@ -93,7 +93,7 @@
 
           buildPhase = ''
             wasm-bindgen --out-dir wasm-app --target web ${sneakysnakes_wasm}/bin/sneakysnakes.wasm
-            wasm-opt -O3 wasm-app/sneakysnakes_bg.wasm -o wasm-app/sneakysnakes_bg.wasm
+            wasm-opt -Oz --strip-debug wasm-app/sneakysnakes_bg.wasm -o wasm-app/sneakysnakes_bg.wasm
           '';
 
           installPhase = ''
