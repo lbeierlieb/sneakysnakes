@@ -2,9 +2,6 @@ name: Code Format Check
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
 
 jobs:
   rustfmt:
