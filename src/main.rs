@@ -580,7 +580,7 @@ fn game_logic(
 
         let pos_before = transform.translation;
 
-        let player_base_speed = 50. / 256.;
+        let player_base_speed = 60. / 256.;
         let modifier = 2f32.powf(player.speed_mod() as f32);
         let player_speed = player_base_speed * modifier;
         transform.translation += player.dir * time.delta_secs() * player_speed;
@@ -777,7 +777,7 @@ impl ItemSpawnState {
     fn random_timer() -> Timer {
         let mut rng = rand::thread_rng();
         Timer::new(
-            Duration::from_millis(rng.gen_range(5000..15000)),
+            Duration::from_millis(rng.gen_range(3000..6000)),
             TimerMode::Once,
         )
     }
