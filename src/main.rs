@@ -777,7 +777,7 @@ impl ItemSpawnState {
     fn random_timer() -> Timer {
         let mut rng = rand::thread_rng();
         Timer::new(
-            Duration::from_millis(rng.gen_range(5000..15000)),
+            Duration::from_millis(rng.gen_range(3000..6000)),
             TimerMode::Once,
         )
     }
