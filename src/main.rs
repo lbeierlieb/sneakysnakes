@@ -580,7 +580,7 @@ fn game_logic(
 
         let pos_before = transform.translation;
 
-        let player_base_speed = 50. / 256.;
+        let player_base_speed = 60. / 256.;
         let modifier = 2f32.powf(player.speed_mod() as f32);
         let player_speed = player_base_speed * modifier;
         transform.translation += player.dir * time.delta_secs() * player_speed;
