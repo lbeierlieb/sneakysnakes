@@ -559,18 +559,23 @@ impl Item {
 }
 
 fn game_logic(
-    mut query: Query<(&mut Transform, &mut Player)>,
+    mut query: Query<(
+        &mut Transform,
+        &mut Player,
+        &mut MeshMaterial2d<ColorMaterial>,
+    )>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
     trail_texture: Res<TrailTexture>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         commands.set_state(AppState::MainMenu);
     }
 
-    for (mut transform, mut player) in &mut query {
+    for (mut transform, mut player, mut material_handle) in &mut query {
         if !player.alive {
             continue;
         }
@@ -605,6 +610,13 @@ fn game_logic(
         let modifier = 2f32.powf(player.thickness_mod() as f32);
         let player_radius = player_base_radius * modifier;
         transform.scale = Vec3::splat(player_radius * 2.);
+
+        if let Some(material) = materials.get_mut(&material_handle.0) {
+            material.color = match player.is_steering_inverse() {
+                true => Color::from(BLUE),
+                false => Color::from(YELLOW),
+            };
+        }
 
         for vec in get_collision_points(transform.translation, player.dir, player_radius) {
             if let Some((x, y)) = game_to_texture_coord(vec, size) {
