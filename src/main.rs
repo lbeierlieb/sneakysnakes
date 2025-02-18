@@ -451,16 +451,16 @@ impl Player {
             .is_some()
     }
 
-    fn is_steering_reversed(&self) -> bool {
+    fn is_steering_inverse(&self) -> bool {
         self.item_effects
             .iter()
-            .filter(|(effect, _)| *effect == ItemEffectIndividual::ReverseSteer)
+            .filter(|(effect, _)| *effect == ItemEffectIndividual::InverseSteer)
             .next()
             .is_some()
     }
 
     fn get_current_steer_keys(&self) -> (KeyCode, KeyCode) {
-        if self.is_steering_reversed() {
+        if self.is_steering_inverse() {
             (self.steer_keys.1, self.steer_keys.0)
         } else {
             self.steer_keys
@@ -812,7 +812,7 @@ enum ItemEffectIndividual {
     Thin,
     Thick,
     FreeFlying,
-    ReverseSteer,
+    InverseSteer,
 }
 
 impl ItemEffectIndividual {
@@ -825,7 +825,7 @@ impl ItemEffectIndividual {
             2 => Self::Thin,
             3 => Self::Thick,
             4 => Self::FreeFlying,
-            5 => Self::ReverseSteer,
+            5 => Self::InverseSteer,
             _ => panic!("item randomizer is broken"),
         }
     }
@@ -849,7 +849,7 @@ impl ItemEffectIndividual {
             Self::Thin => "thin",
             Self::Thick => "thick",
             Self::FreeFlying => "free",
-            Self::ReverseSteer => "<-->",
+            Self::InverseSteer => "<-->",
         }
         .to_string()
     }
