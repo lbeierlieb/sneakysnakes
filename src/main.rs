@@ -451,6 +451,22 @@ impl Player {
             .is_some()
     }
 
+    fn is_steering_inverse(&self) -> bool {
+        self.item_effects
+            .iter()
+            .filter(|(effect, _)| *effect == ItemEffectIndividual::InverseSteer)
+            .next()
+            .is_some()
+    }
+
+    fn get_current_steer_keys(&self) -> (KeyCode, KeyCode) {
+        if self.is_steering_inverse() {
+            (self.steer_keys.1, self.steer_keys.0)
+        } else {
+            self.steer_keys
+        }
+    }
+
     fn update_item_effects(&mut self, delta: Duration) {
         let mut indices_to_remove = vec![];
         for (index, tuple) in self.item_effects.iter_mut().enumerate() {
@@ -543,24 +559,29 @@ impl Item {
 }
 
 fn game_logic(
-    mut query: Query<(&mut Transform, &mut Player)>,
+    mut query: Query<(
+        &mut Transform,
+        &mut Player,
+        &mut MeshMaterial2d<ColorMaterial>,
+    )>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
     trail_texture: Res<TrailTexture>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         commands.set_state(AppState::MainMenu);
     }
 
-    for (mut transform, mut player) in &mut query {
+    for (mut transform, mut player, mut material_handle) in &mut query {
         if !player.alive {
             continue;
         }
 
         let dir_before = player.dir;
-        let (left_key, right_key) = player.steer_keys;
+        let (left_key, right_key) = player.get_current_steer_keys();
         if keyboard_input.pressed(left_key) {
             let rotation =
                 Quat::from_rotation_z(std::f32::consts::PI / 60.0 / 0.016 * time.delta_secs());
@@ -589,6 +610,13 @@ fn game_logic(
         let modifier = 2f32.powf(player.thickness_mod() as f32);
         let player_radius = player_base_radius * modifier;
         transform.scale = Vec3::splat(player_radius * 2.);
+
+        if let Some(material) = materials.get_mut(&material_handle.0) {
+            material.color = match player.is_steering_inverse() {
+                true => Color::from(BLUE),
+                false => Color::from(YELLOW),
+            };
+        }
 
         for vec in get_collision_points(transform.translation, player.dir, player_radius) {
             if let Some((x, y)) = game_to_texture_coord(vec, size) {
@@ -796,18 +824,20 @@ enum ItemEffectIndividual {
     Thin,
     Thick,
     FreeFlying,
+    InverseSteer,
 }
 
 impl ItemEffectIndividual {
     fn get_random_selfeffect() -> Self {
         let mut rng = rand::thread_rng();
 
-        match rng.gen_range(0..5) {
+        match rng.gen_range(0..6) {
             0 => Self::Speed,
             1 => Self::Slowness,
             2 => Self::Thin,
             3 => Self::Thick,
             4 => Self::FreeFlying,
+            5 => Self::InverseSteer,
             _ => panic!("item randomizer is broken"),
         }
     }
@@ -831,6 +861,7 @@ impl ItemEffectIndividual {
             Self::Thin => "thin",
             Self::Thick => "thick",
             Self::FreeFlying => "free",
+            Self::InverseSteer => "<-->",
         }
         .to_string()
     }
