@@ -451,6 +451,22 @@ impl Player {
             .is_some()
     }
 
+    fn is_steering_reversed(&self) -> bool {
+        self.item_effects
+            .iter()
+            .filter(|(effect, _)| *effect == ItemEffectIndividual::ReverseSteer)
+            .next()
+            .is_some()
+    }
+
+    fn get_current_steer_keys(&self) -> (KeyCode, KeyCode) {
+        if self.is_steering_reversed() {
+            (self.steer_keys.1, self.steer_keys.0)
+        } else {
+            self.steer_keys
+        }
+    }
+
     fn update_item_effects(&mut self, delta: Duration) {
         let mut indices_to_remove = vec![];
         for (index, tuple) in self.item_effects.iter_mut().enumerate() {
@@ -560,7 +576,7 @@ fn game_logic(
         }
 
         let dir_before = player.dir;
-        let (left_key, right_key) = player.steer_keys;
+        let (left_key, right_key) = player.get_current_steer_keys();
         if keyboard_input.pressed(left_key) {
             let rotation =
                 Quat::from_rotation_z(std::f32::consts::PI / 60.0 / 0.016 * time.delta_secs());
