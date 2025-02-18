@@ -796,18 +796,20 @@ enum ItemEffectIndividual {
     Thin,
     Thick,
     FreeFlying,
+    ReverseSteer,
 }
 
 impl ItemEffectIndividual {
     fn get_random_selfeffect() -> Self {
         let mut rng = rand::thread_rng();
 
-        match rng.gen_range(0..5) {
+        match rng.gen_range(0..6) {
             0 => Self::Speed,
             1 => Self::Slowness,
             2 => Self::Thin,
             3 => Self::Thick,
             4 => Self::FreeFlying,
+            5 => Self::ReverseSteer,
             _ => panic!("item randomizer is broken"),
         }
     }
@@ -831,6 +833,7 @@ impl ItemEffectIndividual {
             Self::Thin => "thin",
             Self::Thick => "thick",
             Self::FreeFlying => "free",
+            Self::ReverseSteer => "<-->",
         }
         .to_string()
     }
