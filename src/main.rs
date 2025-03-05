@@ -36,8 +36,8 @@ struct WindowSize {
 impl Default for WindowSize {
     fn default() -> Self {
         WindowSize {
-            width: 512.,
-            height: 512.,
+            width: 1000.,
+            height: 1000.,
         }
     }
 }
@@ -57,9 +57,9 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                //resolution: (window_size.width, window_size.height).into(),
+                resolution: (window_size.width, window_size.height).into(),
                 title: "Fixed 2D Screen".to_string(),
-                //resizable: true,
+                resizable: false,
                 ..default()
             }),
             ..default()
@@ -269,11 +269,7 @@ fn setup_in_game(
     window_size: Res<WindowSize>,
 ) {
     let smallest_dim = window_size.get_smallest_dimension();
-    let texture_size = if smallest_dim > 512. {
-        smallest_dim as u32
-    } else {
-        512
-    };
+    let texture_size = 500;
     let texture = Image::new_fill(
         Extent3d {
             width: texture_size,
