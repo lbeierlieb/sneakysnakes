@@ -57,9 +57,9 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                resolution: (window_size.width, window_size.height).into(),
+                //resolution: (window_size.width, window_size.height).into(),
                 title: "Fixed 2D Screen".to_string(),
-                resizable: true,
+                //resizable: true,
                 ..default()
             }),
             ..default()
