@@ -122,8 +122,8 @@ fn main() {
 
 fn setup_main_menu(mut commands: Commands) {
     commands.spawn((
-        Text2d::new("hello"),
-        Transform::from_translation(Vec3::new(0., 0., 2.)).with_scale(Vec3::new(
+        Text2d::new("Press Button 2 to start"),
+        Transform::from_translation(Vec3::new(0., 0.5, 2.)).with_scale(Vec3::new(
             1. / 512.,
             1. / 512.,
             1.,
@@ -133,6 +133,44 @@ fn setup_main_menu(mut commands: Commands) {
             ..default()
         },
     ));
+    commands.spawn((
+        Text2d::new("Controls:"),
+        Transform::from_translation(Vec3::new(-0.51, 0., 2.)).with_scale(Vec3::new(
+            1. / 512.,
+            1. / 512.,
+            1.,
+        )),
+        TextFont {
+            font_size: 40.0,
+            ..default()
+        },
+    ));
+    commands.spawn((
+        Text2d::new("Player PURPLE: Joystick"),
+        Transform::from_translation(Vec3::new(-0.185, -0.2, 2.)).with_scale(Vec3::new(
+            1. / 512.,
+            1. / 512.,
+            1.,
+        )),
+        TextFont {
+            font_size: 40.0,
+            ..default()
+        },
+        TextColor(Color::from(PURPLE)),
+    ));
+    commands.spawn((
+        Text2d::new("Player ORANGE: Button3, Button4"),
+        Transform::from_translation(Vec3::new(0., -0.3, 2.)).with_scale(Vec3::new(
+            1. / 512.,
+            1. / 512.,
+            1.,
+        )),
+        TextFont {
+            font_size: 40.0,
+            ..default()
+        },
+        TextColor(Color::from(Srgba::rgb(0.71, 0.5, 0.0))),
+    ));
 }
 
 fn cleanup_main_menu(mut commands: Commands, query: Query<Entity, With<Text2d>>) {
@@ -141,27 +179,9 @@ fn cleanup_main_menu(mut commands: Commands, query: Query<Entity, With<Text2d>>)
     }
 }
 
-fn update_main_menu(
-    mut commands: Commands,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut settings: ResMut<GameSettings>,
-    mut query: Query<&mut Text2d>,
-) {
+fn update_main_menu(mut commands: Commands, keyboard_input: Res<ButtonInput<KeyCode>>) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         commands.set_state(AppState::RoundStart);
-    }
-    if keyboard_input.just_pressed(KeyCode::ArrowLeft) {
-        if settings.number_of_players > 1 {
-            settings.number_of_players -= 1;
-        }
-    }
-    if keyboard_input.just_pressed(KeyCode::ArrowRight) {
-        if settings.number_of_players < 6 {
-            settings.number_of_players += 1;
-        }
-    }
-    if let Ok(mut text) = query.get_single_mut() {
-        text.0 = format!("Number of players: {}", settings.number_of_players);
     }
 }
 
@@ -290,8 +310,8 @@ fn setup_in_game(
 
     if settings.number_of_players >= 1 {
         spawn_player(
-            "RED".to_string(),
-            Color::from(RED),
+            "PURPLE".to_string(),
+            Color::from(PURPLE),
             (KeyCode::ArrowLeft, KeyCode::ArrowRight),
             &mut commands,
             &mut meshes,
@@ -300,19 +320,9 @@ fn setup_in_game(
     }
     if settings.number_of_players >= 2 {
         spawn_player(
-            "GREEN".to_string(),
-            Color::from(GREEN),
+            "ORANGE".to_string(),
+            Color::from(Srgba::rgb(0.71, 0.5, 0.0)),
             (KeyCode::KeyA, KeyCode::KeyD),
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-        );
-    }
-    if settings.number_of_players >= 3 {
-        spawn_player(
-            "BLUE".to_string(),
-            Color::from(BLUE),
-            (KeyCode::KeyV, KeyCode::KeyN),
             &mut commands,
             &mut meshes,
             &mut materials,
