@@ -575,6 +575,10 @@ fn game_logic(
         commands.set_state(AppState::MainMenu);
     }
 
+    let delta = time.delta_secs();
+    let delta_max = 0.032;
+    let delta = if delta < delta_max { delta } else { delta_max };
+
     for (mut transform, mut player, mut material_handle) in &mut query {
         if !player.alive {
             continue;
@@ -583,13 +587,11 @@ fn game_logic(
         let dir_before = player.dir;
         let (left_key, right_key) = player.get_current_steer_keys();
         if keyboard_input.pressed(left_key) {
-            let rotation =
-                Quat::from_rotation_z(std::f32::consts::PI / 60.0 / 0.016 * time.delta_secs());
+            let rotation = Quat::from_rotation_z(std::f32::consts::PI / 60.0 / 0.016 * delta);
             player.dir = rotation.mul_vec3(player.dir);
         }
         if keyboard_input.pressed(right_key) {
-            let rotation =
-                Quat::from_rotation_z(-std::f32::consts::PI / 60.0 / 0.016 * time.delta_secs());
+            let rotation = Quat::from_rotation_z(-std::f32::consts::PI / 60.0 / 0.016 * delta);
             player.dir = rotation.mul_vec3(player.dir);
         }
 
@@ -604,7 +606,7 @@ fn game_logic(
         let player_base_speed = 60. / 256.;
         let modifier = 2f32.powf(player.speed_mod() as f32);
         let player_speed = player_base_speed * modifier;
-        transform.translation += player.dir * time.delta_secs() * player_speed;
+        transform.translation += player.dir * delta * player_speed;
 
         let player_base_radius = 2.5 / 256.;
         let modifier = 2f32.powf(player.thickness_mod() as f32);
