@@ -208,6 +208,19 @@ fn setup_round_over(mut commands: Commands, query: Query<&Player>) {
             ..default()
         },
     ));
+    commands.spawn((
+        Text2d::new("Button 1: Main Menu\nButton 2: Restart"),
+        Transform::from_translation(Vec3::new(0., -0.9, 2.)).with_scale(Vec3::new(
+            1. / 512.,
+            1. / 512.,
+            1.,
+        )),
+        TextFont {
+            font_size: 30.0,
+            ..default()
+        },
+        TextColor(Color::from(GRAY)),
+    ));
 }
 
 fn on_resize_system(
