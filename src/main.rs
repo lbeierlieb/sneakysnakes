@@ -839,13 +839,12 @@ impl ItemEffectIndividual {
     fn get_random_selfeffect() -> Self {
         let mut rng = rand::thread_rng();
 
-        match rng.gen_range(0..6) {
+        match rng.gen_range(0..5) {
             0 => Self::Speed,
             1 => Self::Slowness,
             2 => Self::Thin,
             3 => Self::Thick,
             4 => Self::FreeFlying,
-            5 => Self::InverseSteer,
             _ => panic!("item randomizer is broken"),
         }
     }
@@ -853,11 +852,12 @@ impl ItemEffectIndividual {
     fn get_random_otherseffect() -> Self {
         let mut rng = rand::thread_rng();
 
-        match rng.gen_range(0..4) {
+        match rng.gen_range(0..5) {
             0 => Self::Speed,
             1 => Self::Slowness,
             2 => Self::Thin,
             3 => Self::Thick,
+            4 => Self::InverseSteer,
             _ => panic!("item randomizer is broken"),
         }
     }
